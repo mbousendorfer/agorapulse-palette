@@ -1,0 +1,1183 @@
+{
+    "_comment": "Reference collection only. The system and component collections named 771 internal design-system tokens and were removed when this repo went public: the 66 reference hexes are brand colours, the semantic and component vocabulary is not ours to publish.",
+    "mode": "Default",
+    "collections": [
+        {
+            "collection": "reference",
+            "mode": "Agorapulse",
+            "tokens": [
+                {
+                    "cssVar": "--ref-border-radius-sm",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "4",
+                    "aliasOf": null,
+                    "figmaPath": "Border Radius.border-radius-sm",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-border-radius-md",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "6",
+                    "aliasOf": null,
+                    "figmaPath": "Border Radius.border-radius-md",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-border-radius-md",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "8",
+                    "aliasOf": null,
+                    "figmaPath": "Border Radius.border-radius-lg",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-spacing-xxxs",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "4",
+                    "aliasOf": null,
+                    "figmaPath": "Spacings.spacing-xxxs",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-spacing-xxs",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "8",
+                    "aliasOf": null,
+                    "figmaPath": "Spacings.spacing-xxs",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-spacing-xs",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "12",
+                    "aliasOf": null,
+                    "figmaPath": "Spacings.spacing-xs",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-spacing-sm",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "16",
+                    "aliasOf": null,
+                    "figmaPath": "Spacings.spacing-sm",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-spacing-md",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "24",
+                    "aliasOf": null,
+                    "figmaPath": "Spacings.spacing-md",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-spacing-lg",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "32",
+                    "aliasOf": null,
+                    "figmaPath": "Spacings.spacing-lg",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-spacing-xl",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "40",
+                    "aliasOf": null,
+                    "figmaPath": "Spacings.spacing-xl",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-spacing-xxl",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "48",
+                    "aliasOf": null,
+                    "figmaPath": "Spacings.spacing-xxl",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-spacing-xxxl",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "60",
+                    "aliasOf": null,
+                    "figmaPath": "Spacings.spacing-xxxl",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-font-family",
+                    "collection": "reference",
+                    "type": "string",
+                    "value": "Averta Std",
+                    "aliasOf": null,
+                    "figmaPath": "Fonts.font-family",
+                    "joinedBy": "path"
+                },
+                {
+                    "cssVar": "--ref-font-size-xs",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "12",
+                    "aliasOf": null,
+                    "figmaPath": "Fonts.Size.font-size-xs",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-font-size-sm",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "14",
+                    "aliasOf": null,
+                    "figmaPath": "Fonts.Size.font-size-sm",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-font-size-md",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "16",
+                    "aliasOf": null,
+                    "figmaPath": "Fonts.Size.font-size-md",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-font-size-lg",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "18",
+                    "aliasOf": null,
+                    "figmaPath": "Fonts.Size.font-size-lg",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-font-size-xl",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "20",
+                    "aliasOf": null,
+                    "figmaPath": "Fonts.Size.font-size-xl",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-font-size-xxl",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "24",
+                    "aliasOf": null,
+                    "figmaPath": "Fonts.Size.font-size-xxl",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-font-size-xxxl",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "28",
+                    "aliasOf": null,
+                    "figmaPath": "Fonts.Size.font-size-xxxl",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-font-line-height-xs",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "16",
+                    "aliasOf": null,
+                    "figmaPath": "Fonts.Line-Height.font-line-height-xs",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-font-line-height-sm",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "18",
+                    "aliasOf": null,
+                    "figmaPath": "Fonts.Line-Height.font-line-height-sm",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-font-line-height-md",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "20",
+                    "aliasOf": null,
+                    "figmaPath": "Fonts.Line-Height.font-line-height-md",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-font-line-height-lg",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "24",
+                    "aliasOf": null,
+                    "figmaPath": "Fonts.Line-Height.font-line-height-lg",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-font-line-height-xl",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "32",
+                    "aliasOf": null,
+                    "figmaPath": "Fonts.Line-Height.font-line-height-xl",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-font-line-height-xxl",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "36",
+                    "aliasOf": null,
+                    "figmaPath": "Fonts.Line-Height.font-line-height-xxl",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-font-weight-regular",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "400",
+                    "aliasOf": null,
+                    "figmaPath": "Fonts.Weight.font-weight-regular",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-font-weight-bold",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "700",
+                    "aliasOf": null,
+                    "figmaPath": "Fonts.Weight.font-weight-bold",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-font-weight-extra-bold",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "800",
+                    "aliasOf": null,
+                    "figmaPath": "Fonts.Weight.font-weight-extra-bold",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-font-weight-black",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "900",
+                    "aliasOf": null,
+                    "figmaPath": "Fonts.Weight.font-weight-black",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-white",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#ffffff",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.white",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-overlay-background",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#344563",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.overlay-background",
+                    "joinedBy": "path"
+                },
+                {
+                    "cssVar": "--ref-color-grey-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#f9f9fa",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Grey.grey-100",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-grey-200",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#edeff2",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Grey.grey-200",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-grey-300",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#dfe3e8",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Grey.grey-300",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-grey-400",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#c0c8d1",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Grey.grey-400",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-grey-500",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#a6b1be",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Grey.grey-500",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-grey-600",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#8d9aab",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Grey.grey-600",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-grey-700",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#758498",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Grey.grey-700",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-grey-800",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#5e6e86",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Grey.grey-800",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-grey-900",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#485974",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Grey.grey-900",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-grey-1000",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#344563",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Grey.grey-1000",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-electric-blue-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#f3f8ff",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Electric Blue.electric-blue-100",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-electric-blue-200",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#e4f0ff",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Electric Blue.electric-blue-200",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-electric-blue-300",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#b1d4fe",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Electric Blue.electric-blue-300",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-electric-blue-400",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#7ab6fe",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Electric Blue.electric-blue-400",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-electric-blue-500",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#178dfe",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Electric Blue.electric-blue-500",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-electric-blue-600",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#0b7ee7",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Electric Blue.electric-blue-600",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-electric-blue-700",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#086dc9",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Electric Blue.electric-blue-700",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-electric-blue-800",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#04539c",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Electric Blue.electric-blue-800",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-orange-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#fff5f2",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Orange.orange-100",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-orange-200",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#ffeae2",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Orange.orange-200",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-orange-300",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#fec0a9",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Orange.orange-300",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-orange-400",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#fb936d",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Orange.orange-400",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-orange-500",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#ff6726",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Orange.orange-500",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-orange-600",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#d34d09",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Orange.orange-600",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-orange-700",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#b03f06",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Orange.orange-700",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-orange-800",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#8e3104",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Orange.orange-800",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-green-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#f3faf3",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Green.green-100",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-green-200",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#e3f5e3",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Green.green-200",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-green-300",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#b0dfb1",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Green.green-300",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-green-400",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#76c97c",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Green.green-400",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-green-500",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#11b43a",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Green.green-500",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-green-600",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#0d9930",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Green.green-600",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-green-700",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#097f26",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Green.green-700",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-green-800",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#05661d",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Green.green-800",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-red-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#fff5f4",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Red.red-100",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-red-200",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#ffe9e6",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Red.red-200",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-red-300",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#febeb4",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Red.red-300",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-red-400",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#fd8f80",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Red.red-400",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-red-500",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#fd4f42",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Red.red-500",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-red-600",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#ec1011",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Red.red-600",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-red-700",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#c50b0c",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Red.red-700",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-red-800",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#9f0708",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Red.red-800",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-menthol-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#effbfa",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Menthol.menthol-100",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-menthol-200",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#daf6f3",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Menthol.menthol-200",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-menthol-300",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#91e1dc",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Menthol.menthol-300",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-menthol-400",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#45c9c3",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Menthol.menthol-400",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-menthol-500",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#11aba6",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Menthol.menthol-500",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-menthol-600",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#0d928d",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Menthol.menthol-600",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-menthol-700",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#097975",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Menthol.menthol-700",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-menthol-800",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#05615d",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Menthol.menthol-800",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-purple-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#f7f7ff",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Purple.purple-100",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-purple-200",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#ededff",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Purple.purple-200",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-purple-300",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#cccafe",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Purple.purple-300",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-purple-400",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#ada8f2",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Purple.purple-400",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-purple-500",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#918bd3",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Purple.purple-500",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-purple-600",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#7a70ca",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Purple.purple-600",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-purple-700",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#6554c0",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Purple.purple-700",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-purple-800",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#51419f",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Purple.purple-800",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-yellow-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#fcf7ef",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Yellow.yellow-100",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-yellow-200",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#f9edd9",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Yellow.yellow-200",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-yellow-300",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#eccb95",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Yellow.yellow-300",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-yellow-400",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#dfa83d",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Yellow.yellow-400",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-yellow-500",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#c18a0e",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Yellow.yellow-500",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-yellow-600",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#a4750a",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Yellow.yellow-600",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-yellow-700",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#886107",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Yellow.yellow-700",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-yellow-800",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#6d4d04",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Yellow.yellow-800",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-mermaid-gradient-from",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#578fff",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.MermAId.MermAId-Gradient-From",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-mermaid-gradient-to",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#df52ff",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.MermAId.MermAId-Gradient-To",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-mermaid-10",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#f5f1ff",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.MermAId.MermAId-100",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-mermaid-20",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#ebe3ff",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.MermAId.MermAId-200",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-tiktok-default-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#000000",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Social Media.Tiktok",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-tiktok-blue-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#25f4ee",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Social Media.Tiktok Blue",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-tiktok-red-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#fe2c55",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Social Media.Tiktok Red",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-instagram-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#dd2a7b",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Social Media.Instagram",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-facebook-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#0866ff",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Social Media.Facebook",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-linkedin-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#2668b2",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Social Media.LinkedIn",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-youtube-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#fe0101",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Social Media.YouTube",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-pinterest-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#e60023",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Social Media.Pinterest",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-x-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#000000",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Social Media.X (Twitter)",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-web-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#1f1f1f",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Social Media.Web",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-threads-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#000000",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Social Media.Threads",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-social-media-bluesky",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#1185fe",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Social Media.Bluesky",
+                    "joinedBy": "path"
+                },
+                {
+                    "cssVar": "--ref-color-social-media-reddit",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#ff4500",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Social Media.Reddit",
+                    "joinedBy": "path"
+                },
+                {
+                    "cssVar": "--ref-color-data-cyan-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#12aaba",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Data.data-cyan-100",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-data-sun-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#d98800",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Data.data-sun-100",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-data-peony-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#cc2878",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Data.data-peony-100",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-data-lime-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#42b85a",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Data.data-lime-100",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-data-iris-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#8a62cc",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Data.data-iris-100",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-data-cherry-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#cc5040",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Data.data-cherry-100",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-data-sky-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#3a92e8",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Data.data-sky-100",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-data-tangerine-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#dc6a30",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Data.data-tangerine-100",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-data-emerald-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#12a87a",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Data.data-emerald-100",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-color-data-navy-100",
+                    "collection": "reference",
+                    "type": "color",
+                    "value": "#4a6acc",
+                    "aliasOf": null,
+                    "figmaPath": "Colors.Data.data-navy-100",
+                    "joinedBy": "codeSyntax"
+                },
+                {
+                    "cssVar": "--ref-icon-size-xs",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "12",
+                    "aliasOf": null,
+                    "figmaPath": "Icons.icon-size-xs",
+                    "joinedBy": "path"
+                },
+                {
+                    "cssVar": "--ref-icon-size-sm",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "16",
+                    "aliasOf": null,
+                    "figmaPath": "Icons.icon-size-sm",
+                    "joinedBy": "path"
+                },
+                {
+                    "cssVar": "--ref-icon-size-md",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "24",
+                    "aliasOf": null,
+                    "figmaPath": "Icons.icon-size-md",
+                    "joinedBy": "path"
+                },
+                {
+                    "cssVar": "--ref-icon-size-xl",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "40",
+                    "aliasOf": null,
+                    "figmaPath": "Icons.icon-size-xl",
+                    "joinedBy": "path"
+                },
+                {
+                    "cssVar": "--ref-icon-size-xxl",
+                    "collection": "reference",
+                    "type": "number",
+                    "value": "48",
+                    "aliasOf": null,
+                    "figmaPath": "Icons.icon-size-xxl",
+                    "joinedBy": "path"
+                }
+            ],
+            "skipped": []
+        }
+    ]
+}
