@@ -7,10 +7,25 @@
  * wrapped into something unreadable. It is a modal task with a commit and a cancel, so it
  * gets a modal: room for the shades to be full width, and nothing else on screen competing.
  *
- * The shades preview from the first frame, on the default hue, before anything is typed.
+ * The shades preview from the first frame, on the default colour, before anything is typed.
  * They used to be gated behind the NAME — `preview` returned null while `id` was empty — so
  * the one thing you are actually choosing was invisible until you had named it, which is
  * backwards. The name gates the commit, not the preview.
+ *
+ * ## The same editor the inspector has
+ *
+ * The colour control here was a two-way switch — "from a colour I have" (a hex box) or "from
+ * a hue" (one slider) — and neither half was what you get when you EDIT a shade. So the same
+ * intention was expressed two different ways depending on whether the family existed yet,
+ * and the dialog could not do the thing the inspector does best: nudge a channel and watch
+ * the consequence. It is `ChannelEditor` now, shared with `RungInspector`, which is what
+ * stops the two drifting apart again.
+ *
+ * That parity forced an honesty fix. The hex used to donate only its HUE, and the dialog said
+ * so in small print — which would make a chroma slider a control that changes nothing. The
+ * colour now gives hue AND chroma exactly as the inspector's "whole ramp" edit does, via the
+ * same `deriveChromaFactor` call. Lightness remains the ladder's to give per rung; here it is
+ * what the chroma fraction is measured at.
  */
 
 import { useMemo, useState } from 'react';
@@ -28,11 +43,11 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Segmented, SegmentedItem } from './Segmented';
-import { ChannelField } from './ChannelField';
+import { ChannelEditor } from './ChannelEditor';
 import { Chip } from './Chip';
 
 import { contrastHex, hexToOklch, inkOn, normaliseHex } from '../color/oklab';
+import { deriveChromaFactor } from '../engine/chroma';
 import { solvePalette } from '../engine/solve';
 import type { PaletteSpec } from '../engine/types';
 import { toFamilyId } from '../model/synthetic';
@@ -82,22 +97,38 @@ function AddFamilyForm({ onDone }: { onDone: () => void }) {
     const current = useStore((s) => s.solution);
 
     const [name, setName] = useState('');
-    const [mode, setMode] = useState<'hue' | 'hex'>('hex');
-    const [hue, setHue] = useState(320);
+    /** One colour, edited any way you like. Where the dialog opens: a mid magenta. */
     const [hex, setHex] = useState('#C2185B');
+    /* Whether the last channel move asked for a colour sRGB can hold. `ChannelEditor` reports
+       it, because only it knows the requested triple — a hex is always in gamut. */
+    const [requestedInGamut, setRequestedInGamut] = useState(true);
 
     const id = toFamilyId(name);
     const taken = spec.chromatic.families.some((f) => f.id === id);
 
-    /** Hue actually used: given directly, or back-solved from the hex. */
-    const effectiveHue = useMemo(() => {
-        if (mode === 'hue') return hue;
+    /**
+     * What the chosen colour donates to the family: its HUE and its CHROMA FRACTION.
+     *
+     * Hue alone was taken before, and the dialog said so in small print. That made a chroma
+     * slider a lie, which is why this changed rather than gaining a caveat: a control on this
+     * engine has to be a control. `deriveChromaFactor` is the same call the inspector's "whole
+     * ramp" edit makes, so choosing a colour for a NEW family and re-hueing an existing one
+     * now mean the same thing.
+     *
+     * Lightness stays the ladder's to give, per rung — that is what makes a rung number worth
+     * writing in a token name. It is not idle, though: the fraction is `C / cmax(L, hue)`, so
+     * where you put the lightness decides what "this much chroma" means. All three channels
+     * reach the result; only two of them reach it directly.
+     */
+    const donates = useMemo(() => {
         try {
-            return hexToOklch(normaliseHex(hex)).H;
+            const { L, C, H } = hexToOklch(normaliseHex(hex));
+            return { hue: H, chromaFactor: deriveChromaFactor(L, C, H) };
         } catch {
             return null;
         }
-    }, [mode, hue, hex]);
+    }, [hex]);
+    const effectiveHue = donates?.hue ?? null;
 
     /**
      * Solve the whole palette with the candidate family appended.
@@ -118,7 +149,7 @@ function AddFamilyForm({ onDone }: { onDone: () => void }) {
             id: previewId,
             label: name.trim() || 'this colour',
             hue: effectiveHue,
-            chromaFactor: null,
+            chromaFactor: donates?.chromaFactor ?? null,
             anchors: {},
         });
         try {
@@ -145,11 +176,11 @@ function AddFamilyForm({ onDone }: { onDone: () => void }) {
         } catch (err) {
             return { error: (err as Error).message } as const;
         }
-    }, [spec, current, previewId, name, effectiveHue, taken]);
+    }, [spec, current, previewId, name, effectiveHue, donates, taken]);
 
     /** Where a given hex would land on the ladder, and how far off it sits. */
     const hexFit = useMemo(() => {
-        if (mode !== 'hex' || !preview || 'error' in preview) return null;
+        if (!preview || 'error' in preview) return null;
         try {
             const target = hexToOklch(normaliseHex(hex));
             const solution = current;
@@ -171,7 +202,7 @@ function AddFamilyForm({ onDone }: { onDone: () => void }) {
         } catch {
             return null;
         }
-    }, [mode, hex, preview, current]);
+    }, [hex, preview, current]);
 
     const commit = () => {
         if (effectiveHue === null || !id || taken) return;
@@ -180,7 +211,7 @@ function AddFamilyForm({ onDone }: { onDone: () => void }) {
                 id,
                 label: name.trim() || id,
                 hue: effectiveHue,
-                chromaFactor: null,
+                chromaFactor: donates?.chromaFactor ?? null,
                 anchors: {},
             });
         });
@@ -197,7 +228,7 @@ function AddFamilyForm({ onDone }: { onDone: () => void }) {
             <DialogHeader>
                 <DialogTitle>Add a colour</DialogTitle>
                 <DialogDescription>
-                    Pick a hue; the eight shades derive themselves on the shared ladder.
+                    Choose a colour; the eight shades derive themselves on the shared ladder.
                 </DialogDescription>
             </DialogHeader>
 
@@ -250,76 +281,68 @@ function AddFamilyForm({ onDone }: { onDone: () => void }) {
                     )
                 )}
 
-                <div className="flex flex-col gap-2">
-                    <Segmented
-                        type="single"
-                        size="sm"
-                        value={mode}
-                        onValueChange={(v) => v && setMode(v as typeof mode)}
-                        aria-label="How to give the hue"
-                    >
-                        <SegmentedItem value="hex" className="px-3 text-xs">
-                            From a colour I have
-                        </SegmentedItem>
-                        <SegmentedItem value="hue" className="px-3 text-xs">
-                            From a hue
-                        </SegmentedItem>
-                    </Segmented>
+                <div className="flex flex-col gap-3">
+                    {/* The colour, edited the way a shade is edited: a native picker, a hex
+                        box, and the inspector's own channel sliders in OKLCH or HSL.
 
-                    {mode === 'hex' ? (
-                        <div className="flex flex-col gap-2">
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="color"
-                                    aria-label="Target colour"
-                                    value={/^#[0-9a-f]{6}$/i.test(hex) ? hex : '#000000'}
-                                    onChange={(e) => setHex(e.target.value)}
-                                    className="h-9 w-11 border-0 bg-transparent p-0"
-                                />
-                                <Input
-                                    type="text"
-                                    aria-label="Target colour, as a hex"
-                                    value={hex}
-                                    onChange={(e) => setHex(e.target.value)}
-                                    className="w-32 font-mono"
-                                />
-                                {effectiveHue !== null && (
-                                    <span className="text-muted-foreground text-xs">
-                                        hue {effectiveHue.toFixed(1)}°, back-solved from this hex
-                                    </span>
-                                )}
-                            </div>
-                            {hexFit && (
-                                <p className="text-muted-foreground max-w-prose text-xs">
-                                    Its lightness lands nearest rung{' '}
-                                    <strong className="text-foreground">{hexFit.rung}</strong>,{' '}
-                                    {hexFit.deltaL >= 0 ? '+' : ''}
-                                    {hexFit.deltaL.toFixed(4)} L off the ladder (
-                                    {(hexFit.stepFraction * 100).toFixed(0)}% of a step). Only the
-                                    hue is taken — pin that rung afterwards if you need the exact
-                                    colour.
-                                </p>
-                            )}
-                        </div>
-                    ) : (
-                        /* `ChannelField` rather than a slider and a read-only span. The
-                           shade inspector needs the same control three times over, so there is
-                           one implementation of the typing behaviour instead of two that
-                           drift — see `ChannelField` for why a plainly controlled number input
-                           cannot be used here. No `onDragChange`: nothing in this dialog
-                           reaches the spec until Add is pressed, so there is no live re-solve
-                           to protect. */
-                        <ChannelField
-                            label="Hue"
-                            value={hue}
-                            min={0}
-                            max={360}
-                            step={0.1}
-                            decimals={1}
-                            unit="°"
-                            onChange={setHue}
+                        This was a two-way `Segmented` — "from a colour I have" gave a hex box,
+                        "from a hue" gave a single hue slider — so the same intention was
+                        expressed two different ways depending on whether the family existed
+                        yet, and the dialog could not do the thing the inspector does best:
+                        nudge a channel and watch the consequence. It is the same component
+                        now, so the two cannot offer different channels again. */}
+                    <div className="flex flex-wrap items-center gap-2">
+                        <input
+                            type="color"
+                            aria-label="The colour this family takes its hue and chroma from"
+                            value={/^#[0-9a-f]{6}$/i.test(hex) ? hex : '#000000'}
+                            onChange={(e) => {
+                                setHex(e.target.value);
+                                setRequestedInGamut(true);
+                            }}
+                            className="h-9 w-11 border-0 bg-transparent p-0"
                         />
-                    )}
+                        <Input
+                            type="text"
+                            aria-label="The colour, as a hex"
+                            value={hex}
+                            spellCheck={false}
+                            onChange={(e) => {
+                                setHex(e.target.value);
+                                setRequestedInGamut(true);
+                            }}
+                            className="w-32 font-mono"
+                        />
+                        {donates && (
+                            <span className="text-muted-foreground text-xs">
+                                hue {donates.hue.toFixed(1)}° · chroma{' '}
+                                {(donates.chromaFactor * 100).toFixed(0)}% of the gamut at that
+                                lightness
+                            </span>
+                        )}
+                    </div>
+
+                    <ChannelEditor
+                        hex={hex}
+                        onChange={(next, meta) => {
+                            setHex(next);
+                            setRequestedInGamut(meta.inGamut);
+                        }}
+                    />
+
+                    {/*
+                       ONE status line, always rendered — the inspector's own fix, for the same
+                       reason. A row that appears and disappears is a row that resizes the
+                       dialog while you are dragging a slider inside it. Only the text changes,
+                       in priority order: what is wrong, then where the colour lands.
+                    */}
+                    <p className="text-muted-foreground max-w-prose text-xs">
+                        {!requestedInGamut
+                            ? 'Outside sRGB — the hex is the clamped colour, not what the sliders say.'
+                            : hexFit
+                              ? `The family takes the hue and the chroma; the ladder gives every rung its lightness. Yours lands nearest rung ${hexFit.rung}, ${hexFit.deltaL >= 0 ? '+' : ''}${hexFit.deltaL.toFixed(4)} L off it (${(hexFit.stepFraction * 100).toFixed(0)}% of a step) — pin that rung afterwards if you need this exact colour.`
+                              : 'The family takes the hue and the chroma; the ladder gives every rung its lightness.'}
+                    </p>
                 </div>
 
                 <div className="flex flex-col gap-2">

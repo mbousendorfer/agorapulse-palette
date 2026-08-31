@@ -25,10 +25,9 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Chip } from './Chip';
-import { ChannelField } from './ChannelField';
+import { ChannelEditor } from './ChannelEditor';
 
-import { contrastHex, hexToOklch, inGamut, normaliseHex, oklchToHex } from '../color/oklab';
-import { hexToHsl, hslToHex } from '../color/hsl';
+import { contrastHex, hexToOklch, normaliseHex } from '../color/oklab';
 import { deriveChromaFactor } from '../engine/chroma';
 import { solvePalette } from '../engine/solve';
 import { wcagLevel } from '../engine/constraints';
@@ -76,15 +75,11 @@ export function RungInspector({ family, rung }: { family: string; rung: number }
     const [scope, setScope] = useState<'shade' | 'ramp'>('shade');
 
     const [draft, setDraft] = useState(solved?.hex ?? '#000000');
-    /*
-       Which space the three sliders are in. The colour is a hex either way.
-
-       View state, so it resets with the panel rather than persisting. Someone who thinks in HSL
-       will switch once per shade, which is cheaper than a preference nobody remembers setting.
-    */
-    const [space, setSpace] = useState<'oklch' | 'hsl'>('oklch');
     const [reason, setReason] = useState(override?.reason ?? '');
     const [error, setError] = useState<string | null>(null);
+    /* Whether the last channel move asked for a colour sRGB can hold. Starts true: a solved
+       rung is in gamut by construction, and so is every hex a re-seed can bring in. */
+    const [requestedInGamut, setRequestedInGamut] = useState(true);
 
     /**
      * Re-seed the fields when the shade underneath them moves.
@@ -98,58 +93,12 @@ export function RungInspector({ family, rung }: { family: string; rung: number }
      * the ladder's lightness rather than at the hex you typed, and the field has to
      * show where it actually landed.
      */
-    /*
-       The three channels are held as state, not derived from `draft` on every render, and that
-       is a correctness point rather than a performance one.
-
-       `oklchToHex` is not injective at 8 bits — the module says so, and `#F9F9FA` read as
-       L/C/H and written back lands on `#F8F9FA`. Deriving the channels from the hex each frame
-       would feed that 1-LSB drift back into the sliders, so a hue drag would slowly walk the
-       lightness. Holding LCH as the source of truth while the sliders are in use and writing
-       hex OUT keeps the drift to the single conversion at the end.
-    */
-    const [lch, setLch] = useState(() => {
-        try {
-            return hexToOklch(solved?.hex ?? '#000000');
-        } catch {
-            return { L: 0, C: 0, H: 0 };
-        }
-    });
-
-    /*
-       And the HSL triple, held for exactly the same reason.
-
-       `hexToHsl` rounds to the integers a designer types, so it loses more than the OKLCH
-       round trip does — `#64a0e6` and `#64a1e6` are one `212 / 72% / 65%`, measured in
-       `color/hsl.ts`.
-
-       What that rounding actually does was measured rather than assumed, because the obvious
-       fear is that it accumulates. It does not: sweeping hue 120 -> 200 -> 120 in 4-degree
-       steps, committing on every step, leaves saturation and lightness exactly where they
-       started. What you DO see is one step at the start — the shipped `#ada8f2` rounds to 74%
-       saturation and the first hex committed from it rounds back to 75% — and that is the
-       rounding being honest rather than drifting. The sliders always describe the committed
-       hex, which is the invariant worth keeping in a tool whose output is the hex.
-    */
-    const [hsl, setHsl] = useState(() => {
-        try {
-            return hexToHsl(solved?.hex ?? '#000000');
-        } catch {
-            return { h: 0, s: 0, l: 0 };
-        }
-    });
-
     const [seededFrom, setSeededFrom] = useState(solved?.hex);
     if (solved?.hex !== seededFrom) {
         setSeededFrom(solved?.hex);
         setDraft(solved?.hex ?? '#000000');
-        try {
-            setLch(hexToOklch(solved?.hex ?? '#000000'));
-            setHsl(hexToHsl(solved?.hex ?? '#000000'));
-        } catch {
-            /* A rung with an unparseable hex cannot happen — the solver produces them — but
-               the seed must not be the thing that throws if it ever does. */
-        }
+        /* The channel triples re-seed themselves: `ChannelEditor` takes `solved.hex` and
+           watches it, so there is one place that knows how to turn a hex into sliders. */
     }
     const [seededReason, setSeededReason] = useState(override?.reason);
     if (override?.reason !== seededReason) {
@@ -195,23 +144,6 @@ export function RungInspector({ family, rung }: { family: string; rung: number }
         : solution.chromaticLadder[ladderIndex];
 
     /*
-       One writer for all three channels: move the channel, derive the hex, commit.
-
-       `commit` is what every other control here calls, so a slider cannot diverge from what
-       typing a hex does — including the refusal path, where `updateSpec` keeps the last good
-       solution and the handle simply stops.
-    */
-    const setChannel = (next: { L: number; C: number; H: number }) => {
-        setLch(next);
-        write(oklchToHex(next.L, next.C, next.H));
-    };
-
-    const setHslChannel = (next: { h: number; s: number; l: number }) => {
-        setHsl(next);
-        write(hslToHex(next));
-    };
-
-    /*
        Both spaces land here, so a slider in either one cannot diverge from what typing a hex
        does — including the refusal path, where `updateSpec` keeps the last good solution and
        the handle simply stops.
@@ -220,8 +152,12 @@ export function RungInspector({ family, rung }: { family: string; rung: number }
        from the hex, which is one conversion; keeping both in step per pointer move would push
        each space's rounding into the other and both would drift.
     */
-    const write = (hex: string) => {
+    const write = (hex: string, meta: { inGamut: boolean }) => {
         setDraft(hex);
+        /* The sliders' own verdict, not one derived from the hex — `oklchToHex` clamps, so a
+           hex is always in gamut and asking it would always answer "fine". Only the editor
+           knows the value that was requested. */
+        setRequestedInGamut(meta.inGamut);
         commit(hex);
     };
 
@@ -294,7 +230,7 @@ export function RungInspector({ family, rung }: { family: string; rung: number }
        `title` and the text cannot drift apart.
     */
     const statusLine = (() => {
-        if (!inGamut(lch.L, lch.C, lch.H)) return 'Outside sRGB — the hex is clamped.';
+        if (!requestedInGamut) return 'Outside sRGB — the hex is clamped.';
         if (isAnchor) return 'An anchor: the ladder is derived from it.';
         if (deltaL !== null && Math.abs(deltaL) > 0.0002) {
             const dir = deltaL > 0 ? 'lighter' : 'darker';
@@ -490,124 +426,11 @@ export function RungInspector({ family, rung }: { family: string; rung: number }
                    slider pretending the top of its track is reachable.
                 */}
                 <div className="mt-4 flex flex-col gap-2">
-                    {/*
-                       The space is a CHOICE, and naming it is what keeps the panel honest.
-
-                       Both triples describe the same colour and none of their numbers agree:
-                       #ada8f2 is OKLCH L 0.7645 / C 0.1051 / H 286.7 and HSL 244 / 74% / 80%.
-                       Two lightnesses and two hues, neither wrong. Showing one triple at a time
-                       under its own name is why this is a switch rather than six sliders.
-
-                       OKLCH is the default because the ladder IS a ladder in OKLab: a step here
-                       is a step the engine reasons about, which is the whole reason the palette
-                       is solvable rather than drawn. HSL is here because it is what Figma, most
-                       pickers and most CSS say, so it is what people have to hand — but nudging
-                       HSL lightness does not move a rung by a predictable perceptual step.
-                    */}
-                    <div className="flex items-center gap-3">
-                        <Segmented
-                            type="single"
-                            size="sm"
-                            value={space}
-                            onValueChange={(v) => v && setSpace(v as typeof space)}
-                            aria-label="Channel space"
-                        >
-                            <SegmentedItem
-                                value="oklch"
-                                className="px-2 font-mono text-xs"
-                                title="Perceptual — the space the ladder is built in"
-                            >
-                                OKLCH
-                            </SegmentedItem>
-                            <SegmentedItem
-                                value="hsl"
-                                className="px-2 font-mono text-xs"
-                                title="CSS sRGB — what a picker or a stylesheet will hand you"
-                            >
-                                HSL
-                            </SegmentedItem>
-                        </Segmented>
-                        <span className="text-muted-foreground text-xs">
-                            {space === 'oklch'
-                                ? 'a step here is a step the engine understands'
-                                : 'sRGB — a step here is not a perceptual step'}
-                        </span>
-                    </div>
-
-                    {space === 'oklch' ? (
-                        <>
-                            <ChannelField
-                                label="Lightness"
-                                value={lch.L}
-                                min={0}
-                                max={1}
-                                step={0.001}
-                                decimals={4}
-                                onChange={(L) => setChannel({ ...lch, L })}
-                                onDragChange={setDragging}
-                            />
-                            <ChannelField
-                                label="Chroma"
-                                value={lch.C}
-                                min={0}
-                                max={0.37}
-                                step={0.001}
-                                decimals={4}
-                                onChange={(C) => setChannel({ ...lch, C })}
-                                onDragChange={setDragging}
-                            />
-                            <ChannelField
-                                label="Hue"
-                                value={lch.H}
-                                min={0}
-                                max={360}
-                                step={0.1}
-                                decimals={1}
-                                unit="°"
-                                onChange={(H) => setChannel({ ...lch, H })}
-                                onDragChange={setDragging}
-                            />
-                        </>
-                    ) : (
-                        /* Hue first, because that is the order HSL is written in and the order
-                           every picker shows. The OKLCH group above starts with lightness for
-                           the same reason: it is the order the ladder is built in. */
-                        <>
-                            <ChannelField
-                                label="Hue"
-                                value={hsl.h}
-                                min={0}
-                                max={360}
-                                step={1}
-                                decimals={0}
-                                unit="°"
-                                onChange={(h) => setHslChannel({ ...hsl, h })}
-                                onDragChange={setDragging}
-                            />
-                            <ChannelField
-                                label="Saturation"
-                                value={hsl.s}
-                                min={0}
-                                max={100}
-                                step={1}
-                                decimals={0}
-                                unit="%"
-                                onChange={(sat) => setHslChannel({ ...hsl, s: sat })}
-                                onDragChange={setDragging}
-                            />
-                            <ChannelField
-                                label="Lightness"
-                                value={hsl.l}
-                                min={0}
-                                max={100}
-                                step={1}
-                                decimals={0}
-                                unit="%"
-                                onChange={(l) => setHslChannel({ ...hsl, l })}
-                                onDragChange={setDragging}
-                            />
-                        </>
-                    )}
+                    {/* The same editor the Add-a-colour dialog uses, so "edit a shade" and
+                        "choose a colour for a new family" cannot offer different channels —
+                        which is exactly how they had drifted: this had a space switch and six
+                        sliders, that had one hue slider. See `ChannelEditor`. */}
+                    <ChannelEditor hex={solved.hex} onChange={write} onDragChange={setDragging} />
                 </div>
 
                 {/*
