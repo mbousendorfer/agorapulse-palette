@@ -1,0 +1,475 @@
+/**
+ * Everything you can take out of the app once you have decided something.
+ *
+ * The Style Dictionary export is the one that has to be byte-careful: it lands
+ * back in the design-system repo as a commit somebody reviews. It preserves the
+ * `_comment-*` blocks verbatim (they encode load-bearing decisions about source
+ * glob ordering, and a warning that Style Dictionary scans comment strings for
+ * brace syntax), preserves key order, and matches the repo's 4-space indent.
+ * Formatting is what makes that PR reviewable, so it is not polish.
+ */
+
+import { contrastHex } from '../color/oklab';
+import { evaluateConstraints } from '../engine/constraints';
+import { GREY_RUNGS, type PaletteSolution, type PaletteSpec } from '../engine/types';
+import { emitTokenCss } from '../emit/cssVars';
+import type { Resolved } from '../model/resolve';
+import { rungToNodeId } from '../model/resolve';
+import type { NodeId, TokenGraph } from '../model/types';
+
+/**
+ * Reading order for the families the design system already ships. Anything the
+ * user ADDED is appended after them.
+ *
+ * Derived rather than hard-coded, because a hard-coded list silently drops an
+ * added family from every export — the family would exist in the palette, the
+ * preview and the CSS, and then vanish from the JSON somebody is supposed to
+ * commit.
+ */
+const SHIPPED_ORDER = [
+    'grey',
+    'electricBlue',
+    'orange',
+    'green',
+    'red',
+    'yellow',
+    'purple',
+    'menthol',
+];
+
+function familiesOf(solution: PaletteSolution): string[] {
+    const seen = new Set<string>();
+    for (const ref of solution.rungs.keys()) seen.add(ref.split('.')[0]);
+    const known = SHIPPED_ORDER.filter((f) => seen.has(f));
+    const added = [...seen].filter((f) => !SHIPPED_ORDER.includes(f)).sort();
+    return [...known, ...added];
+}
+
+/** The rung names a family actually has. Grey runs its own scale. */
+function rungsOf(family: string, solution: PaletteSolution): readonly number[] {
+    return family === 'grey' ? GREY_RUNGS : solution.chromaticRungs;
+}
+
+// ------------------------------------------------------- Style Dictionary ----
+
+/**
+ * A Style Dictionary document, as far as this module needs to know.
+ *
+ * These two exporters edit the ORIGINAL parsed JSON so that comments, key order and
+ * indentation survive byte-for-byte — which means walking a shape TypeScript cannot
+ * know statically. It was typed `Record<string, any>` with an `any` cursor, and `any`
+ * turns off every check on the walk: a wrong key gave `undefined` silently and the
+ * repoint was simply dropped from a file the app still emitted, so a reviewer saw a
+ * PR that did not contain the change.
+ *
+ * `unknown` plus one narrowing step gives the same freedom and keeps the checks.
+ */
+type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
+interface JsonObject {
+    [key: string]: JsonValue | undefined;
+}
+
+const isObject = (v: unknown): v is JsonObject =>
+    typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/** Walk a dotted token id through a document. Returns undefined if the path breaks. */
+function walk(doc: JsonObject, id: NodeId): JsonObject | undefined {
+    let cursor: JsonValue | undefined = doc;
+    for (const key of id.split('.')) {
+        if (!isObject(cursor)) return undefined;
+        cursor = cursor[key];
+    }
+    return isObject(cursor) ? cursor : undefined;
+}
+
+/**
+ * Rewrite `reference/palette.json`'s colour ramps with the solved values, leaving
+ * every other key, comment and ordering untouched.
+ *
+ * We edit the ORIGINAL parsed JSON rather than generating a fresh document, so
+ * anything the app does not manage survives byte-for-byte.
+ */
+export function exportV3Json(
+    originalV3: unknown,
+    solution: PaletteSolution,
+    appVersion: string,
+): string {
+    const doc = structuredClone(originalV3) as JsonObject;
+    const v3 = walk(doc, 'ref.palette');
+    if (!v3) throw new Error('Unexpected palette.json shape: ref.palette is missing');
+
+    const added: string[] = [];
+    for (const family of familiesOf(solution)) {
+        // A family added in the app has no group in the source file; create it,
+        // otherwise the export quietly omits what the user just designed.
+        let ramp = v3[family];
+        if (!isObject(ramp)) {
+            ramp = {};
+            v3[family] = ramp;
+            added.push(family);
+        }
+        for (const rung of rungsOf(family, solution)) {
+            const solved = solution.rungs.get(`${family}.${rung}`);
+            if (!solved) continue;
+            // Uppercase, to match the file's existing convention.
+            const hex = solved.hex.toUpperCase();
+            const existing = ramp[String(rung)];
+            if (isObject(existing)) existing.value = hex;
+            else ramp[String(rung)] = { value: hex };
+        }
+    }
+
+    let marker = `Colour ramps regenerated by Agorapulse Color Lab ${appVersion}.`;
+    if (added.length) {
+        marker +=
+            ` Adds ${added.join(', ')} — this changes the set of CSS variable names, so Figma` +
+            ` and any consumer of --ref-palette-* need the same addition.`;
+    }
+    if (Array.isArray(doc['_comment-v3'])) {
+        doc['_comment-v3'] = [...doc['_comment-v3'], '', marker];
+    }
+
+    return JSON.stringify(doc, null, 4) + '\n';
+}
+
+/** The semantic files, with any repointed alias written back as a reference. */
+export function exportSemanticJson(
+    originals: Map<string, unknown>,
+    graph: TokenGraph,
+    aliasOverrides: Map<NodeId, NodeId>,
+): Array<{ file: string; content: string }> {
+    const touched = new Map<string, Set<NodeId>>();
+    for (const id of aliasOverrides.keys()) {
+        const node = graph.nodes.get(id);
+        if (!node) continue;
+        const set = touched.get(node.originFile);
+        if (set) set.add(id);
+        else touched.set(node.originFile, new Set([id]));
+    }
+
+    const out: Array<{ file: string; content: string }> = [];
+    for (const [file, ids] of touched) {
+        const original = originals.get(file);
+        if (!original) continue;
+        const doc = structuredClone(original) as JsonObject;
+
+        for (const id of ids) {
+            const target = aliasOverrides.get(id);
+            if (target === undefined) continue;
+            const holder = walk(doc, id);
+            if (!holder) {
+                // The path does not exist in this file. Emitting the file anyway
+                // would hand someone a PR missing the edit they asked for.
+                throw new Error(
+                    `Cannot write ${id} back to ${file}: no such path in the original JSON`,
+                );
+            }
+            holder.value = `{${target}}`;
+        }
+        out.push({ file, content: JSON.stringify(doc, null, 4) + '\n' });
+    }
+    return out;
+}
+
+// ------------------------------------------------------------------- CSS -----
+
+export function exportCss(
+    graph: TokenGraph,
+    resolved: Resolved,
+    solution: PaletteSolution,
+    aliasOverrides: Map<NodeId, NodeId>,
+): string {
+    return emitTokenCss(graph, resolved, solution, {
+        aliasOverrides,
+        header:
+            'Drop-in replacement for the colour half of desktop_variables.css. ' +
+            'Aliases are real var() references — set outputReferences: true in ' +
+            'desktop_config.js and the design system emits this shape itself.',
+    });
+}
+
+// -------------------------------------------------------------- markdown -----
+
+export function exportMarkdown(solution: PaletteSolution): string {
+    const lines: string[] = ['# Agorapulse V3 palette', ''];
+    const d = solution.derived;
+
+    lines.push('## Derivation', '');
+    lines.push(`- rung 700 ← purple anchor, L ${d.L700.toFixed(4)}`);
+    lines.push(`- rung 500 ← mean of the two brand anchors, L ${d.L500.toFixed(4)}`);
+    lines.push(
+        `- low plateau step ${d.lowStep.toFixed(4)}, high plateau step ${d.highStep.toFixed(4)}`,
+    );
+    lines.push(`- rung 200 **solved** at L ${d.L200.toFixed(4)}, bound by \`${d.rung200Witness}\``);
+    lines.push(
+        `- purple gamut fraction ${d.purpleChromaFactor.toFixed(4)}, back-solved from its anchor`,
+    );
+    lines.push('');
+
+    const chromatic = solution.chromaticRungs;
+    lines.push('## Values', '', '| | ' + chromatic.join(' | ') + ' |');
+    lines.push('|---|' + chromatic.map(() => '---').join('|') + '|');
+    for (const family of familiesOf(solution).filter((f) => f !== 'grey')) {
+        const cells = chromatic.map((r) => {
+            const s = solution.rungs.get(`${family}.${r}`);
+            if (!s) return '';
+            const bold = s.provenance.kind === 'anchor' ? '**' : '';
+            return `${bold}\`${s.hex}\`${bold}`;
+        });
+        lines.push(`| ${family} | ${cells.join(' | ')} |`);
+    }
+    lines.push('', '| | ' + GREY_RUNGS.join(' | ') + ' |');
+    lines.push('|---|' + GREY_RUNGS.map(() => '---').join('|') + '|');
+    lines.push(
+        '| grey | ' +
+            GREY_RUNGS.map((r) => {
+                const s = solution.rungs.get(`grey.${r}`);
+                return s ? `\`${s.hex}\`` : '';
+            }).join(' | ') +
+            ' |',
+        '',
+    );
+
+    lines.push('## Measurements', '');
+    lines.push('| family | rung | hex | L | C | h | on white | provenance |');
+    lines.push('|---|---|---|---|---|---|---|---|');
+    for (const family of familiesOf(solution)) {
+        for (const rung of rungsOf(family, solution)) {
+            const s = solution.rungs.get(`${family}.${rung}`);
+            if (!s) continue;
+            const prov =
+                s.provenance.kind === 'override'
+                    ? `override ${s.provenance.deltaL > 0 ? '+' : ''}${s.provenance.deltaL.toFixed(4)} L`
+                    : s.provenance.kind;
+            // Hue below C 0.01 is quantisation noise, so do not print a number
+            // that implies precision the 8-bit value cannot carry.
+            const hue = s.C < 0.01 ? '—' : s.H.toFixed(1);
+            lines.push(
+                `| ${family} | ${rung} | \`${s.hex}\` | ${s.L.toFixed(4)} | ${s.C.toFixed(3)} | ` +
+                    `${hue} | ${contrastHex(s.hex, '#FFFFFF').toFixed(2)} | ${prov} |`,
+            );
+        }
+    }
+    return lines.join('\n') + '\n';
+}
+
+// ---------------------------------------------------------------- Figma ------
+
+/**
+ * A payload for a Figma plugin console script.
+ *
+ * Semantic tokens are modelled as VARIABLE_ALIAS, not flattened hexes. That keeps
+ * the graph intact on the Figma side, which is the whole thesis of this app — a
+ * flattened export would reproduce exactly the problem the shipped CSS has.
+ */
+export function exportFigma(
+    graph: TokenGraph,
+    solution: PaletteSolution,
+    aliasOverrides: Map<NodeId, NodeId>,
+): string {
+    const variables: Array<Record<string, unknown>> = [];
+
+    for (const family of familiesOf(solution)) {
+        for (const rung of rungsOf(family, solution)) {
+            const solved = solution.rungs.get(`${family}.${rung}`);
+            if (!solved) continue;
+            const kebab = family.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+            variables.push({
+                name: `color/${kebab}/${rung}`,
+                resolvedType: 'COLOR',
+                kind: 'value',
+                hex: solved.hex,
+                codeSyntax: {
+                    WEB: `var(${graph.nodes.get(rungToNodeId(`${family}.${rung}`))?.cssVar})`,
+                },
+            });
+        }
+    }
+
+    for (const node of graph.nodes.values()) {
+        if (node.tier !== 'sys' || !node.isColor || node.palette !== 'v3') continue;
+        const target =
+            aliasOverrides.get(node.id) ??
+            (node.source.kind === 'alias' ? node.source.target : undefined);
+        if (!target) continue;
+        const targetNode = graph.nodes.get(target);
+        if (!targetNode) continue;
+        variables.push({
+            name: node.path.slice(1).join('/'),
+            resolvedType: 'COLOR',
+            kind: 'alias',
+            aliasOf: targetNode.path.slice(1).join('/'),
+            codeSyntax: { WEB: `var(${node.cssVar})` },
+        });
+    }
+
+    return (
+        JSON.stringify(
+            {
+                collection: 'Design System Variables 2026',
+                mode: 'Agorapulse',
+                note:
+                    'Semantic entries are aliases, not hexes: applying them as VARIABLE_ALIAS keeps ' +
+                    'the reference graph intact in Figma. Flattening them here would recreate the ' +
+                    'exact problem this tool exists to work around.',
+                variables,
+            },
+            null,
+            2,
+        ) + '\n'
+    );
+}
+
+// ----------------------------------------------------------------- diff ------
+
+export interface DiffRow {
+    id: NodeId;
+    label: string;
+    before: string;
+    after: string;
+    /** The alias itself was repointed. */
+    aliasChanged: boolean;
+    /**
+     * The value moved WITHOUT the alias changing — the target moved underneath
+     * it. This is the cascade, and it is the reason the app exists.
+     */
+    cascaded: boolean;
+}
+
+export function computeDiff(
+    graph: TokenGraph,
+    before: Resolved,
+    after: Resolved,
+    aliasOverrides: Map<NodeId, NodeId>,
+): { rungs: DiffRow[]; semantic: DiffRow[]; component: DiffRow[] } {
+    const rungs: DiffRow[] = [];
+    const semantic: DiffRow[] = [];
+    const component: DiffRow[] = [];
+
+    for (const [id, node] of graph.nodes) {
+        if (!node.isColor) continue;
+        const b = before.get(id)?.value ?? '';
+        const a = after.get(id)?.value ?? '';
+        const baseTarget = node.source.kind === 'alias' ? node.source.target : undefined;
+        const aliasChanged = aliasOverrides.has(id) && aliasOverrides.get(id) !== baseTarget;
+        if (b === a && !aliasChanged) continue;
+
+        const row: DiffRow = {
+            id,
+            label: node.path.join(' / '),
+            before: b,
+            after: a,
+            aliasChanged,
+            cascaded: b !== a && !aliasChanged,
+        };
+        if (node.tier === 'ref') rungs.push(row);
+        else if (node.tier === 'sys') semantic.push(row);
+        else component.push(row);
+    }
+
+    return { rungs, semantic, component };
+}
+
+// ----------------------------------------------------------- shareable URL ---
+
+/** Deflate + base64url, so a whole palette proposal fits in a link. */
+export async function encodeSpecToHash(
+    spec: PaletteSpec,
+    aliases: Map<NodeId, NodeId>,
+): Promise<string> {
+    const payload = JSON.stringify({ v: 1, spec, aliases: [...aliases] });
+    const stream = new Blob([payload]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+    const buf = new Uint8Array(await new Response(stream).arrayBuffer());
+    let binary = '';
+    for (const byte of buf) binary += String.fromCharCode(byte);
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/**
+ * Validate a decoded payload before it reaches the solver.
+ *
+ * This used to check the version field and nothing else, then hand `parsed.spec`
+ * straight to `solvePalette`. Everything below is reachable from a URL somebody
+ * pastes into the app:
+ *
+ *   `extraDarkRungs: 1e9`      the ladder loop runs a billion times — the tab hangs
+ *   `lowPlateauDivisor: 0`     lowStep is Infinity, L800 is -Infinity, and the whole
+ *                              palette comes out white and black with no error at all
+ *   `families: []`             the rung-200 bisection throws NotBracketed with a
+ *                              message about contrast that has nothing to do with it
+ *   grey anchors equal         division by zero inside greyChromaAt, C becomes NaN,
+ *                              and the emitted colour is the literal string
+ *                              `#NaNNaNNaN`
+ *
+ * The last two are the dangerous shape: no exception, just a quietly wrong palette.
+ * So the knobs the UI clamps are clamped here too — a URL is an input like any other.
+ */
+function readSharedPayload(
+    parsed: unknown,
+): { spec: PaletteSpec; aliases: Map<NodeId, NodeId> } | null {
+    if (!isObject(parsed)) throw new Error('Shared state is not an object');
+    if (parsed.v !== 1)
+        throw new Error(`Unsupported shared-state version: ${JSON.stringify(parsed.v)}`);
+
+    const spec = parsed.spec;
+    if (!isObject(spec)) throw new Error('Shared state carries no spec');
+
+    const chromatic = spec.chromatic;
+    const grey = spec.grey;
+    if (!isObject(chromatic) || !isObject(grey)) {
+        throw new Error('Shared spec is missing its chromatic or grey section');
+    }
+    if (!Array.isArray(chromatic.families) || chromatic.families.length === 0) {
+        throw new Error('Shared spec declares no colour families');
+    }
+    for (const key of ['lowPlateauDivisor', 'highPlateauDivisor'] as const) {
+        const v = chromatic[key];
+        if (typeof v !== 'number' || !Number.isFinite(v) || v === 0) {
+            throw new Error(`Shared spec has an unusable ${key}: ${JSON.stringify(v)}`);
+        }
+    }
+    const extra = chromatic.extraDarkRungs;
+    if (extra !== undefined && (typeof extra !== 'number' || extra < 0 || extra > 8)) {
+        throw new Error(`Shared spec asks for ${JSON.stringify(extra)} extra dark rungs`);
+    }
+    if (grey.anchor100 === grey.anchor1000) {
+        throw new Error('Shared spec gives grey the same anchor at both ends');
+    }
+
+    const aliases = Array.isArray(parsed.aliases)
+        ? new Map(parsed.aliases as Array<[NodeId, NodeId]>)
+        : new Map<NodeId, NodeId>();
+    return { spec: spec as unknown as PaletteSpec, aliases };
+}
+
+export async function decodeSpecFromHash(
+    hash: string,
+): Promise<{ spec: PaletteSpec; aliases: Map<NodeId, NodeId> } | null> {
+    try {
+        const b64 = hash.replace(/-/g, '+').replace(/_/g, '/');
+        const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+        const stream = new Blob([bytes])
+            .stream()
+            .pipeThrough(new DecompressionStream('deflate-raw'));
+        const parsed: unknown = JSON.parse(await new Response(stream).text());
+        return readSharedPayload(parsed);
+    } catch (err) {
+        console.warn('[color-lab] could not read shared state:', (err as Error).message);
+        return null;
+    }
+}
+
+// ------------------------------------------------------------ constraints ----
+
+export function exportConstraintReport(spec: PaletteSpec, solution: PaletteSolution): string {
+    const lines = ['# Constraint report', ''];
+    for (const c of evaluateConstraints(spec, solution)) {
+        lines.push(`## ${c.id} — ${c.label}`, '');
+        lines.push(
+            `**${c.status}**, slack ${c.slack >= 0 ? '+' : ''}${c.slack.toFixed(5)} ${c.unit}`,
+        );
+        if (c.witness) lines.push(`Witness: \`${c.witness}\``);
+        lines.push('', c.explanation, '');
+    }
+    return lines.join('\n');
+}

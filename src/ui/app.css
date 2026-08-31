@@ -1,0 +1,2301 @@
+/**
+ * The app's own LAYOUT. Not its paint.
+ *
+ * 456 chrome declarations used to live here — colour, fill, border, radius, shadow, type
+ * size, weight, leading, tracking. 31 are left, and every one of them is in this list
+ * because it CANNOT be a utility, not because the sweep ran out:
+ *
+ *   5   `@keyframes` steps. Not chrome; a keyframe has no call site by definition.
+ *   7   `opacity`, all of them mechanics rather than paint — two hide a control until its
+ *       row is hovered (`.rung-ctl`, `.wall-family-remove`), two reveal it, and the swatch
+ *       label pair is ranked by transparency BECAUSE no two greys can be legible on all 66
+ *       backgrounds. See the note at `.swatch-rung`.
+ *   8   `::before` / `::after` colour. Expressible as `before:*` utilities, and left here
+ *       on purpose: these are the group tree's guide rules, positioned from a `--guide`
+ *       custom property, and splitting the colour from the geometry would put one rule's
+ *       two halves in two files.
+ *  11   element selectors with nothing to hang a class on — `body`, `kbd`,
+ *       `input[type='range']`, `h1.page`, `p.lede`. shadcn ships no `kbd`, and `body` has
+ *       to state the base size and fill somewhere.
+ *
+ * Everything else reads from `theme.css`, either as a utility at the call site or, where a
+ * rule has no call site, as the theme's own variable — `var(--text-xs)`, `var(--radius-md)`,
+ * `var(--shadow-lg)`. There is no second scale in this file any more: the type, radius and
+ * elevation scales that used to sit in `:root` are gone, and `--s1..--s7` is the one that
+ * remains because spacing is layout.
+ *
+ * One exception, and it is Tailwind's rather than this file's: the `shadow-*` UTILITIES do
+ * not read the theme's `--shadow-*` tiers, they inline their own scale. So the single
+ * `var(--shadow-lg)` below is the only elevation in the app that the theme controls. Stated
+ * because the claim above would otherwise read as true of shadows, and it is not.
+ *
+ * `--ref-*` / `--sys-*` / `--comp-*` are still never referenced here. The tokens under test
+ * cannot restyle the tool inspecting them, on top of the iframe boundary that already
+ * isolates the preview.
+ *
+ * ---
+ *
+ * What follows is the file's original header, kept because its reasoning still holds.
+ *
+ * There is no palette in this file any more. Every colour comes from the base shadcn
+ * tokens in `theme.css` — `--background`, `--card`, `--secondary`, `--border`, `--input`,
+ * `--foreground`, `--muted-foreground`, `--primary`, `--destructive` — so the tool has
+ * exactly one source of colour and it is the one shadcn ships.
+ *
+ * What used to be here was a parallel 13-colour palette named `--app-*`, referenced about
+ * 250 times, plus 57 literal hex values scattered through the rules. Two of those colours
+ * existed to fix measured contrast failures; where that judgement still applies it is
+ * recorded in the rule that needs it rather than in a token nobody would find.
+ *
+ * The chrome stays neutral and dark, which is now a property of the shadcn theme rather
+ * than of this file: a coloured tool competes with the palette being judged, and every
+ * surface here is a background against which somebody is trying to read a hue.
+ *
+ * `--ref-*` / `--sys-*` / `--comp-*` are still never referenced here. The tokens under
+ * test cannot restyle the tool inspecting them, on top of the iframe boundary that
+ * already isolates the preview.
+ */
+
+:root {
+    /* --- scales -------------------------------------------------------------
+       Spacing is linear 4/8/12/16/24/32/48; type is a 1.2 ratio from 11.
+       Every arbitrary value in this file (3, 5, 6, 7, 10, 13, 14, 62px) was
+       chosen by eye, which is why nothing lined up. These are the only sizes. */
+    --s1: 4px;
+    --s2: 8px;
+    --s3: 12px;
+    --s4: 16px;
+    --s5: 24px;
+    --s6: 32px;
+    --s7: 48px;
+
+    /*
+       THREE SCALES USED TO LIVE HERE and they are the reason this file existed as a second
+       styling system: a type scale (`--t1`..`--t6`, 11/12/13/15/19/24px), a radius scale
+       (`--r1`..`--r3`, 4/6/10px) and an elevation scale (`--e1`..`--e3`). Each was a
+       second opinion about something the theme already decides, and each was chosen by
+       eye before the theme existed.
+
+       They are gone. Type is `text-xs`..`text-2xl`, radius is `rounded-sm`/`-md`/`-lg`,
+       elevation is `shadow-sm`/`-lg`/`-2xl` — and where a rule genuinely has no call site
+       to reach (`kbd`, `pre.code`, `body`, the native `range` and `color` inputs), it
+       reads Tailwind's own `var(--text-xs)`, `var(--radius-md)`, `var(--shadow-lg)`. So
+       every size and corner in the app now traces to `theme.css`. Shadows do not, and
+       that is Tailwind's doing rather than a gap here — see the note at the top.
+
+       Two consequences worth stating rather than discovering. The densest labels went
+       from 11px to 12px and body copy from 13px to 14px, because the theme's scale has no
+       11 or 13 — the app is very slightly less dense than it was. And radius went from
+       4/6/10px to a scale derived from `--radius`, so it now follows the theme. Worth
+       knowing how far that swings across the three themes this app has worn: at `autoblog`'s
+       1.4rem the tiers were 18/20/22px and everything small was clamped into a pill; at
+       `examdedo`'s 0.25rem they were 0/2/4px and `rounded-sm` was SQUARE; at the current
+       0.5rem they are 4/6/8px. One number in `theme.css` moves all of it.
+
+       `--s1`..`--s7` below STAYS, and it is the one scale left. Spacing is layout rather
+       than paint, not something the theme should be able to reflow — and the argument for
+       folding it in got weaker, not stronger, since it was written: back then the theme's
+       `--spacing` was 0.27rem and folding would have moved every gap by 8%, whereas the last
+       two themes both set Tailwind's own 0.25rem and the merge would now be nearly free.
+       Nearly free is still a separate decision from this one, and it is not this file's.
+    */
+
+    /* One easing, one duration family. Motion here has a job: making the
+       cascade visible. A palette re-solve is instant, which is exactly why it
+       reads as a jump rather than as consequence. */
+    --ease: cubic-bezier(0.4, 0, 0.3, 1);
+    --fast: 120ms;
+    --base: 180ms;
+
+    /*
+       Two contrast findings this palette recorded, kept as notes because the values
+       they justified are gone:
+
+       `--app-ink-3` was raised from #6f778a, which measured 3.33:1 and FAILED AA as the
+       ink of every 11px label in the app. It now reads `--muted-foreground`
+       (oklch 0.708), which is lighter than the value that failed and lighter than the
+       #858fa6 that replaced it.
+
+       `--app-line-control` existed because operable borders need 3:1 under 1.4.11 and
+       the decorative hairline measured 1.53:1. It now reads `--ring`; `--input` is the
+       faint one, and is used only where the border is decoration.
+
+       Those two ratios were measured against the old palette and are kept as the reasoning
+       rather than as live numbers. Both tokens are per-mode now — see `theme.css`.
+    */
+
+    /*
+       `color-scheme` used to be pinned to `dark` here. It cannot be, now that there are two
+       modes: it tells the UA which way to paint scrollbars and native controls, so pinning
+       it dark left a light-mode window with dark scrollbars and a dark `input[type=color]`
+       swatch. It is declared per mode in `theme.css` instead.
+    */
+}
+
+/*
+   The reset that used to live here — `*{box-sizing}` and `button{font: inherit}` — is
+   Tailwind's preflight now, so only what preflight does NOT do is left.
+
+   `button { color: inherit }` is deliberately gone rather than moved. This file is
+   UNLAYERED and Tailwind's utilities are in `@layer utilities`, and unlayered CSS beats
+   every layer regardless of specificity. So that one declaration was overriding
+   `text-primary-foreground` on every shadcn `Button` in the app: each one inherited its
+   colour from whatever contained it. Most screens inherited something readable, which is
+   why it surfaced only on the one primary button sitting inside a tinted panel — white
+   background, pale blue label, invisible.
+
+   Preflight sets `font: inherit` on buttons and does not touch their colour, which is the
+   correct pair. Adding anything here that a component might want to set is the same trap.
+*/
+
+html,
+body,
+#app {
+    height: 100%;
+}
+
+body {
+    background: var(--background);
+    color: var(--foreground);
+    font: 13px/1.5 var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+}
+
+/*
+   One measure, on shadcn's own hook rather than in shadcn's file.
+
+   `CardDescription` used to carry `max-w-prose` as a local edit to `card.tsx`. On a 940px
+   workspace those lines ran 124 characters, where readable prose is 45–75. The decision was
+   right and the place was wrong: it is a line length, which is layout, and putting it in the
+   component meant `card.tsx` no longer matched upstream for something the theme has no
+   opinion about.
+
+   `data-slot` is shadcn's own attribute on every primitive, so this reaches the description
+   without touching the component or repeating the class at fifteen call sites. Nothing else
+   on a card is constrained — tables and token rows are data and want the full width.
+*/
+[data-slot='card-description'] {
+    max-width: 65ch;
+}
+
+/* ---------------------------------------------------------------- layout --- */
+
+.shell {
+    display: grid;
+    /* Two columns. The third was the preview dock at `var(--app-dock, 380px)`, present on
+       exactly one screen and hidden the rest of the time — the preview is a tab on the
+       component page now, so the column, the width variable and the `.dock-hidden` variant
+       that collapsed it are all gone. */
+    grid-template-columns: 232px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) 34px;
+    height: 100%;
+}
+
+.rail {
+    grid-row: 1 / 3;
+    overflow-y: auto;
+    padding: 14px 0;
+}
+
+/*
+   The workspace owns the vertical rhythm, because nothing else did.
+
+   Cards used to carry `margin-bottom: 16px` from the `.card` rule; that rule was dead (no
+   element has used `className="card"` since the shadcn conversion) and deleting it left the
+   cards with no spacing of their own. Measured on the audit screen, the gaps between five
+   consecutive cards were 0, 128, 110, 0 — two pairs touching and two shoved apart by
+   whatever their content happened to do.
+
+   One flex column with one gap gives every screen the same rhythm, and it is the last place
+   a card needs to know about its neighbours.
+*/
+.workspace {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    overflow: auto;
+    padding: 24px 24px 48px;
+    min-width: 0;
+}
+
+/* Flex children shrink to their content by default; these two must not. */
+.workspace > .withtree,
+.workspace > [data-slot='table-container'] {
+    min-width: 0;
+}
+
+/* The preview, in a tab rather than pinned to the window edge.
+
+   As `.dock` this was a flex column with a left border, filling a 380px grid column. In a tab
+   it has the full workspace width and needs no border to separate it from anything, but it
+   still wants a height: the iframe inside has no intrinsic one, so without this the panel
+   collapses to its toolbar. */
+.preview-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s2);
+    min-width: 0;
+}
+
+.preview-panel-body {
+    /* Inherited from `.dock-body`, which this replaces. The white background is not a
+       surface of this app: css-ui components are drawn for a white document, and theming it
+       would light them wrongly. `position: relative` is the containing block for the loading
+       label that sits over the iframe. */
+    background: #fff;
+    position: relative;
+    /* No height of its own any more: the frame reports what its content needs and sizes itself,
+       so a one-button fixture is compact and a 600px dropdown is whole. Constraining it here was
+       what cut `selection-dropdown` off — the panel was 520px, the frame 150, the document 624. */
+    display: flex;
+    min-width: 0;
+}
+
+/* `.snapshots` is `display: flex; height: 100%` with no width and no `flex` of its own, so as
+   a flex child it sat at its 300px content width inside a 1320px panel — the fixture rendered
+   as a small island top-left. Set here rather than on `.snapshots`, which the split view also
+   uses. */
+.preview-panel-body > * {
+    flex: 1;
+    min-width: 0;
+}
+
+.statusbar {
+    /* `2 / 4` while the shell had three columns; the third is gone. */
+    grid-column: 2 / 3;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 16px;
+    /*
+     * The bar sits in a fixed-height grid row, so text that wraps is text that is cut in
+     * half. Below roughly 1150px the four groups genuinely do not fit — measured at
+     * 1280x800 the overflow is 0, and at 610px it was already 92px before the snapshot
+     * chip was added here.
+     *
+     * Groups therefore never wrap internally, and the row scrolls when it has to. That is
+     * not a breakpoint system and does not pretend to be one; it just makes the overflow
+     * reachable instead of clipped, which is the difference between cramped and lying.
+     */
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.statusbar::-webkit-scrollbar {
+    display: none;
+}
+
+/* ------------------------------------------------------------- primitives --- */
+
+/*
+   `h1.page` keeps only the width and rhythm a heading needs; its size and weight are
+   `text-lg font-bold` at the call sites, and its colour is inherited.
+
+   `.mono`, `.dim` and `.dimmer` are GONE, not moved. Each was a single declaration
+   restating a theme token — `font-family: var(--font-mono)` and, twice over,
+   `color: var(--muted-foreground)` — so `font-mono` and `text-muted-foreground` say the
+   same thing at the call site without a second vocabulary to learn. `.dim` and `.dimmer`
+   were byte-identical, which is worth recording: the two-tier hierarchy the names promised
+   had already been flattened by an earlier pass, and nothing was lost collapsing them.
+*/
+p.lede {
+    max-width: 74ch;
+    margin: 0 0 20px;
+}
+
+/*
+   No element rules for form controls or focus here.
+
+   `input[type='text'], select { border: 1px solid … }` was UNLAYERED, so it beat every
+   shadcn component: `CommandInput` is an `<input type="text">`, and it was inheriting a
+   1px border, a 5px radius and a 12px mono font from this file rather than using its own.
+   That border resolved to `--ring` — the FOCUS colour, the brand orange — so every search
+   box in the app wore a permanent orange outline.
+
+   The `:focus-visible` block was the same mistake: shadcn components carry
+   `focus-visible:ring-*`, and an unlayered `outline` overrode all of them at once.
+
+   Every text field is a shadcn `Input` now and every checkbox a `Checkbox`. What is left
+   below is `range` and `color`, which are native controls shadcn does not ship — those
+   keep element rules, and only those.
+*/
+
+/* This block was INSIDE the comment above, which was never terminated. So neither
+   declaration had ever applied: every range input drew at the UA default 129px with the UA
+   default blue thumb rather than the brand accent. `.field` is a grid and a grid item stretches
+   to its column, which is what hid the missing width — until the WCAG ticks put the input in a
+   wrapper, where a replaced element keeps its intrinsic size and a 129px track rendered under
+   1270px of tick labels.
+
+   Do not write a comment-close sequence inside a comment when describing this. Doing exactly
+   that is what broke it the first time, and it broke my fix too: the prose after it parsed as a
+   selector and swallowed the rule again. */
+input[type='range'] {
+    accent-color: var(--primary);
+    width: 100%;
+}
+
+/* --------------------------------------------------------- palette wall ---- */
+
+.wall {
+    display: grid;
+    gap: 3px;
+    /* Row label + 10 rungs (grey is the widest family). Kept in step with the
+       inline value PaletteWall writes on mount — see the note there for why 104
+       and 46 rather than 116 and 52. */
+    grid-template-columns: 104px repeat(10, minmax(46px, 1fr));
+    align-items: stretch;
+}
+
+.wall-head {
+    text-align: center;
+    padding-bottom: 4px;
+    align-self: end;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Names the axis once, where the eye enters the grid. Ten numbers with no unit
+   is a row of numbers; "lighter → darker" makes them a scale. */
+.wall-head-label {
+    text-align: left;
+}
+
+/* A hairline across the rungs, so the axis label reads as a caption on an axis
+   rather than as a stray word above the first family. It used to fade out along its
+   length, `linear-gradient(to right, var(--input), var(--border) 70%, transparent)`. The
+   fade was a nice touch and it was also a second opinion about what a hairline looks
+   like; it is `bg-border` at the call site now, so the theme decides. */
+.wall-head-rule {
+    grid-column: 2 / -1;
+    align-self: end;
+    height: 1px;
+    margin-bottom: 5px;
+}
+
+.wall-family {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-right: 8px;
+}
+
+/*
+   ONE geometry for every colour this app draws, and it used to be two.
+
+   A second `.swatch` rule lived further down under a "the wall: bigger swatches" heading and
+   was SELECTED UNSCOPED, so it overrode this one everywhere — including on the read-only tiles,
+   which therefore inherited the wall's 240ms transition, its hover lift and its 2px ring. The
+   values that rule set are folded in here; what was genuinely wall-only moved under `.wall`.
+
+   The face — radius, family, size, weight, tracking — is NOT here. It is a class table in
+   `ColourTile.tsx` that both call sites import, because that is what stopped the wall and the
+   tiles from drawing the same colour seven different ways.
+*/
+.swatch {
+    position: relative;
+    height: 72px;
+    padding: 7px var(--s2);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: stretch;
+    /* The value is painted through the token itself, so a palette re-solve is
+       one CSSOM write on the wall container and ZERO React renders. */
+    /* Not a theme colour: `--swatch` is the solved palette colour under test, set
+       inline per swatch. The fallback only shows if that inline value is missing. */
+    background: var(--swatch, #333);
+}
+
+/* Hover and selection are `hover:ring-2 ring-foreground` / `aria-pressed:ring-primary`
+   at the call site. Only the stacking stays here: a ring is drawn outside the box, so
+   without this the next swatch in the grid paints over it.
+
+   `.wall`-scoped, like everything else that responds to a pointer: outside the wall a swatch
+   is a sample, not a control. */
+.wall .swatch:hover,
+.wall .swatch[aria-pressed='true'] {
+    z-index: 1;
+}
+
+.swatch.empty {
+    cursor: default;
+}
+
+/* The rung is the identity; the hex is the read-out. Ranked by size and
+   position rather than by two greys, which no swatch background can guarantee. */
+/*
+   The opacity pair below stays, and it is not chrome that escaped the sweep.
+
+   The comment above is the reason: these two labels sit ON the colour under test, so they
+   cannot be ranked by two greys — no swatch background can guarantee either of them is
+   readable. They are ranked by transparency against whatever they happen to sit on, which
+   is a property of the data, not of the theme.
+*/
+.swatch-rung {
+    font-variant-numeric: tabular-nums;
+    opacity: 0.55;
+    text-align: left;
+}
+
+.swatch-foot {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    align-items: flex-start;
+}
+
+.swatch-hex {
+    opacity: 0.72;
+}
+
+.wall .swatch:hover .swatch-rung,
+.wall .swatch:hover .swatch-hex,
+.wall .swatch[aria-pressed='true'] .swatch-rung,
+.wall .swatch[aria-pressed='true'] .swatch-hex {
+    opacity: 1;
+}
+
+/* A mark means "this rung is not plain ladder output". It has to be readable on
+   any of the 66 backgrounds, so it carries its own ground. */
+/* Chroma clamped to the sRGB boundary: a notch cut from the corner. Present on
+   15 rungs, so it must not read as a warning — it is a property of the space. */
+.swatch-clamp {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 11px;
+    height: 11px;
+    border-top-right-radius: var(--radius-md);
+    background: linear-gradient(225deg, rgba(255, 255, 255, 0.42) 0 50%, transparent 50%);
+    pointer-events: none;
+}
+
+.swatch.light .swatch-clamp {
+    background: linear-gradient(225deg, rgba(0, 0, 0, 0.24) 0 50%, transparent 50%);
+}
+
+/* The one label deliberately held below the 11px floor.
+   It sits INSIDE a colour sample, so it is not part of the problem the floor
+   exists to fix: its ink is chosen per shade by measured contrast, never from
+   --app-ink-3. And it has 36px to work in, because the wall shows ten rungs
+   across. At 11px `+0.010 L` needs 57px and was clipped to `+0.010` — raising the
+   size destroyed the very information the raise was meant to make readable. */
+/*
+   The four literal colours below are deliberately NOT theme tokens.
+
+   A swatch's ink sits on the colour being judged, not on a surface this app controls, so
+   it is chosen for contrast against that colour — `.swatch.light` gets near-black,
+   `.swatch.dark` gets white. Reading `--foreground` here would tie the readability of a
+   palette label to the app's theme, and the label would vanish on half the palette.
+*/
+.swatch-mark {
+    font: 600 9px/1.6 var(--font-sans);
+    padding: 0 3px;
+    background: rgba(0, 0, 0, 0.32);
+    color: #fff;
+    white-space: nowrap;
+}
+
+.swatch.light .swatch-rung,
+.swatch.light .swatch-hex,
+.swatch.light .swatch-mark {
+    color: #14161b;
+}
+.swatch.light .swatch-mark {
+    background: rgba(255, 255, 255, 0.62);
+}
+.swatch.dark .swatch-rung,
+.swatch.dark .swatch-hex,
+.swatch.dark .swatch-mark {
+    color: #fff;
+}
+
+.dot {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    /*
+       Not `--border`. A dot's fill IS a token's colour, so its edge has to read against 66
+       possible fills as well as against the panel, and `--border` is a hairline chosen for
+       one surface.
+
+       It is `--foreground` at 18% rather than a literal, and that is the fix to a real bug
+       rather than tidying. This was `rgba(255,255,255,0.18)` with a comment claiming it
+       "survives a theme change without being re-measured" — true only while every theme was
+       dark. In a light theme a white edge at 18% over a white card and a `#FFFFFF` token is
+       nothing at all: the dot for every light surface token had no edge. `--foreground`
+       flips to #000000 in light and #ffffff in dark, so the edge composites the right way in
+       both without a second rule.
+    */
+    border: 1px solid color-mix(in srgb, var(--foreground) 18%, transparent);
+    vertical-align: -2px;
+}
+
+/*
+   The group header row has no rule here at all any more.
+
+   It was uppercase with 0.07em of tracking, and that tracking was the only thing making
+   the uppercase legible — stripping the tracking as chrome would have left badly spaced
+   shouting, so the uppercase went too. The row is ranked by weight and ink instead,
+   `bg-muted [&>td]:font-semibold [&>td]:text-xs [&>td]:text-muted-foreground` at the one
+   call site, which left `.role-group` naming nothing. Uppercase labels are a house rule
+   here rather than a preference.
+*/
+
+/* -------------------------------------------------------- target picker ---- */
+
+.picker {
+    position: relative;
+    min-width: 0;
+    width: 100%;
+}
+
+/* ------------------------------------------------------------ dock/toolbar - */
+
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding: 8px 10px;
+}
+
+.toolbar select {
+    font-family: var(--font-sans);
+}
+
+/* Shown while the frame re-parses its stylesheets. Deliberately quiet, and in a
+   corner: it must not cover the component being judged, and it appears on every
+   fixture change, so anything centred would strobe. */
+.dock-loading {
+    position: absolute;
+    bottom: var(--s2);
+    left: var(--s2);
+    z-index: 2;
+    padding: 2px var(--s2);
+    /*
+       A LITERAL ON PURPOSE, and it belongs with `.preview-panel-body`'s `background: #fff`
+       above. This chip sits over the preview iframe, and that iframe is always a white
+       document because css-ui is drawn for one — the backdrop does not change with the mode.
+       So the chip must always be dark to be legible, and a theme token would be exactly
+       wrong: `--foreground` at 82% inverts to near-white in dark mode and the label would
+       vanish into the white page underneath it.
+
+       Tried the token version first and it broke in dark. Recording that here so the next
+       sweep for hardcoded colour does not "fix" it again.
+    */
+    background: rgba(22, 24, 29, 0.82);
+    color: #fff;
+    pointer-events: none;
+}
+
+/* The crash screen. Readable rather than styled — it is the one surface that must
+   work when everything else in the app has stopped. */
+.crash {
+    max-width: 62ch;
+    margin: 0 auto;
+    padding: var(--s7) var(--s5);
+}
+
+.crash h1 {
+    margin: 0 0 var(--s3);
+}
+
+.crash-actions {
+    display: flex;
+    gap: var(--s2);
+    margin-top: var(--s4);
+    flex-wrap: wrap;
+}
+
+.dock-note {
+    padding: 7px 10px;
+    color: var(--foreground);
+}
+
+/* ----------------------------------------------------------------- misc ---- */
+
+.banner {
+    display: flex;
+    gap: 10px;
+    padding: 10px 12px;
+}
+
+/*
+   Both banner variants are at the call site, through `cn()` so the variant's ink replaces
+   the base ink instead of racing it. The tints are Tailwind slash modifiers rather than an
+   explicit `color-mix` against `--card`: over a card the two look the same, and the modifier
+   does not have to name the surface it sits on — which matters now that there are two.
+
+   `.banner.good` used to be `--primary`, i.e. the interactive colour standing in for
+   success. It reads `text-foreground`: stock shadcn has no green, and under the themes that
+   did have one the concern was that a result should not look like something you can click —
+   which `text-primary` would have implied. Full-strength ink says "settled" without either.
+*/
+
+/* Says what a reload brought back. Neutral rather than alarming: a restored
+   session is the app working, not a problem — it turns amber only when the saved
+   palette had to be dropped. */
+.restore-note {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--s3);
+    padding: var(--s2) var(--s3);
+    color: var(--foreground);
+}
+
+.restore-note.warn {
+    color: var(--foreground);
+}
+
+.restore-actions {
+    display: inline-flex;
+    gap: var(--s2);
+    margin-left: auto;
+    flex: none;
+}
+
+/*
+   A knob's three rows. No `margin-bottom` any more: it was 12px of margin stacking on top of
+   whatever gap the parent flex column set, so the space between two fields was the sum of two
+   rules and neither one was the answer. The parent owns the rhythm now — `gap-4` within a
+   group, `gap-8` between groups — which is what makes the grouping legible.
+*/
+.field {
+    display: grid;
+    gap: 4px;
+}
+
+.field > label {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.field .val {
+    font-family: var(--font-mono);
+    color: var(--foreground);
+}
+
+/* Only the box. Its fill, edge, corner, face and ink are utilities on the two `<pre>`s
+   that use it — `bg-background border rounded-md font-mono text-xs leading-relaxed
+   text-muted-foreground`. */
+pre.code {
+    margin: 0;
+    padding: 12px;
+    overflow: auto;
+    max-height: 420px;
+}
+
+/* ------------------------------------------------------ groups navigator --- */
+/* Mirrors Figma's variables panel: a tree over the token name with inclusive
+   counts, in the collection's own reading order rather than alphabetically. */
+
+.withtree {
+    display: grid;
+    grid-template-columns: 208px minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+}
+
+.withtree.tree-collapsed {
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 10px;
+}
+
+.withtree-main {
+    min-width: 0;
+}
+
+.grouptree {
+    position: sticky;
+    top: -20px;
+    background: var(--card);
+    padding: 6px 0 4px;
+    max-height: calc(100vh - 90px);
+    overflow-y: auto;
+}
+
+.grouptree-head {
+    padding: 4px 10px 8px;
+}
+
+.grouptree-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s2);
+    width: 100%;
+    padding: 3px 10px;
+    text-align: left;
+    cursor: pointer;
+    position: relative;
+}
+
+/* `interactive` and `category` each appear under four different parents. At one
+   indent step and one weight, four identical words at four depths is a list you
+   cannot navigate — so depth gets a guide rule, and a nested level steps down in
+   size and ink instead of only moving right. */
+.grouptree-item[data-depth='0'] {
+    color: var(--foreground);
+}
+
+.grouptree-item[data-depth='1']::before,
+.grouptree-item[data-depth='2']::before,
+.grouptree-item[data-depth='3']::before {
+    content: '';
+    position: absolute;
+    left: calc(var(--guide) * 1px);
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--border);
+}
+
+.grouptree-item:hover[data-depth]::before,
+.grouptree-item[aria-current='true'][data-depth]::before {
+    background: var(--input);
+}
+
+.grouptree-item:hover {
+    color: var(--foreground);
+}
+
+.grouptree-item[aria-current='true'] {
+    color: var(--foreground);
+}
+
+.grouptree-note {
+    margin: 8px 10px 4px;
+}
+
+/* ------------------------------------------------- collapsible navigation --- */
+/* Both the rail and the Groups tree collapse: on a 3-column shell with a
+   preview dock, the token tables are the first thing to run out of width. */
+
+.shell.rail-collapsed {
+    grid-template-columns: 46px minmax(0, 1fr);
+}
+
+.grouptree-toggle {
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+}
+
+.grouptree-toggle:hover {
+    color: var(--foreground);
+}
+
+.grouptree.collapsed {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 4px;
+    background: var(--card);
+    position: sticky;
+    top: -20px;
+}
+
+.grouptree-active {
+    writing-mode: vertical-rl;
+    max-height: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 6px 3px;
+    color: var(--foreground);
+    cursor: pointer;
+}
+
+.grouptree-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.tok-name {
+    color: var(--foreground);
+}
+
+.tok-var {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+/* Inline beside the name, and on a SPAN. This was `display: flex` on a `<td>`,
+   which stops a cell behaving like a cell: it loses `vertical-align`, its height
+   collapses to its content, and its bottom border draws across the middle of the
+   row instead of at the row's edge. Never lay out a table cell with flex. */
+.tok-notes {
+    display: inline-flex;
+    gap: var(--s1);
+    align-items: center;
+    margin-left: 7px;
+    vertical-align: 1px;
+}
+
+.tok-static {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+
+/* ---------------------------------------------------------------- the dock --- */
+
+/* ------------------------------------------------------- derivation chain --- */
+/* Numbered because the order is the point: each step consumes the one above it.
+   The prose is the label and the value is the data, so the value carries the
+   weight and the prose stays quiet. */
+
+.chain {
+    margin: 0 0 16px;
+    padding: 0;
+    list-style: none;
+    counter-reset: chain;
+}
+
+.chain li {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 5px 0;
+    counter-increment: chain;
+}
+
+.chain li::before {
+    content: counter(chain);
+    flex: 0 0 auto;
+    width: 16px;
+    font: var(--text-xs) var(--font-mono);
+    color: var(--muted-foreground);
+}
+
+.chain li > span {
+    flex: 1;
+}
+
+.chain li > span em {
+    color: var(--foreground);
+}
+
+.chain li > b {
+    font: 13px var(--font-mono);
+    color: var(--foreground);
+}
+
+/* --------------------------------------------------------------- markers --- */
+/* Up to 45% of component rows carry a flag. Spelled out they are a wall of
+   repeated prose that pushed the table under the preview dock; as markers they
+   are scannable metadata, with the full sentence on hover. */
+
+.mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 16px;
+    padding: 0 3px;
+    cursor: help;
+}
+
+/*
+   The five mark variants are all paint and are all at the call site now, through `cn()`.
+
+   Same shape, opposite meaning is worth keeping: an accidental bypass is a defect, a
+   declared one is the answer, and only the ink and the tooltip separate them. That is right
+   — the structure being flagged is identical — and it is now stated where the two are
+   chosen from rather than in two rules that look unrelated.
+
+   The tinted borders went from `color-mix(in srgb, var(--primary) 50%, transparent)` to
+   `border-primary/50`: the same operation, since the slash modifier IS a mix against
+   transparent, written once instead of four times.
+*/
+.mark.edited {
+    cursor: pointer;
+}
+
+/* ------------------------------------------------------------- inspector --- */
+/* One shade, one edit. The consequence of that edit is the loudest thing on the
+   card, because confusing "rebuilds the scale" with "moves this shade" is the
+   mistake the panel exists to prevent. */
+
+.inspector {
+    background: var(--card);
+    margin-bottom: 16px;
+    overflow: hidden;
+}
+
+.insp-head {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+}
+
+.insp-chip {
+    width: 56px;
+    height: 56px;
+    flex: 0 0 auto;
+    /* `--foreground` at 14%, not white at 14% — see `.dot` for why the literal was a bug. */
+    border: 1px solid color-mix(in srgb, var(--foreground) 14%, transparent);
+}
+
+.insp-id h2 {
+    margin: 0;
+}
+
+.insp-hex {
+    margin: 2px 0 0;
+    color: var(--foreground);
+}
+
+/* Label-value: the label is small and quiet, the value carries the weight. */
+.insp-facts {
+    display: flex;
+    gap: 24px;
+    margin: 0 0 0 auto;
+}
+
+.insp-facts dd {
+    margin: 2px 0 0;
+    color: var(--foreground);
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+}
+
+.insp-facts dd em {
+    font: var(--text-xs) var(--font-sans);
+}
+
+.insp-facts dd em.warn {
+    color: var(--foreground);
+}
+
+/*
+   The edit fold, and its spacing is grouped rather than uniform.
+
+   Three groups: what this edit changes (`.insp-scope`), the colour itself (`.insp-field` plus
+   the `.insp-delta` sentence that measures it), and why it is leaving the ladder
+   (`.insp-reason`). Between groups is `--s5`; inside the middle group the delta sits `--s2`
+   under its own field, because it describes that value and belongs to it.
+
+   `.insp-scope` had NO bottom margin at all, so the hex input sat flush against the segmented
+   control above it. Worth naming why it went unnoticed: the anchor branch renders an `Alert`
+   with `mb-3` instead, so one of the two paths through this fold was spaced and the other was
+   not. Both are `--s5` now.
+*/
+.insp-edit {
+    padding: var(--s5);
+}
+
+/*
+   The anchor consequence is a shadcn `Alert` now, so it has no rule here at all.
+
+   It was a hand-rolled callout: a flex column with `border-left: 3px solid` taking its
+   colour from `currentColor`, a 13px strong and an 11px muted span. That is `Alert` +
+   `AlertTitle` + `AlertDescription` exactly, and the component states the consequence
+   with a full border rather than a coloured left edge — which is also the house rule.
+*/
+
+.insp-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.insp-field input[type='color'] {
+    width: 38px;
+    height: 32px;
+    padding: 0;
+    cursor: pointer;
+}
+
+/*
+   The width lives at the call site as `w-44`, not here, and this rule keeps only what a
+   utility cannot express. shadcn's `Input` sets `w-full`, and a utility outranks this layer —
+   so `width: 130px` here never applied, which was invisible until the Reset button appeared
+   beside the field and shrank it.
+*/
+.insp-hexinput {
+    font-variant-numeric: tabular-nums;
+}
+
+.insp-delta {
+    /* Tight to the field above: it measures that value rather than starting a new thought. */
+    margin: var(--s2) 0 0;
+    color: var(--foreground);
+}
+
+.insp-reason {
+    display: block;
+    margin-top: var(--s5);
+}
+
+.insp-reason span {
+    display: block;
+    margin-bottom: var(--s2);
+}
+
+.insp-reason input {
+    width: 100%;
+    max-width: 560px;
+    font-family: var(--font-sans) !important;
+}
+
+/* ==========================================================================
+   Pass 2 — apply the scale, add elevation, and make the cascade visible.
+   These overrides sit last on purpose: they retune the rules above rather than
+   rewriting them, so the diff stays readable.
+   ========================================================================== */
+
+body {
+    font-size: var(--text-sm);
+}
+
+h1.page {
+    font-size: var(--text-xl);
+    letter-spacing: -0.01em;
+}
+
+p.lede {
+    font-size: var(--text-sm);
+    line-height: 1.6;
+    max-width: 68ch;
+    margin-bottom: var(--s5);
+}
+
+.workspace {
+    padding: var(--s5) var(--s5) var(--s7);
+}
+
+/* --- the wall: bigger swatches, and motion that shows the derivation ------ */
+
+.wall {
+    gap: var(--s1);
+}
+
+/*
+   Geometry moved to the single `.swatch` rule above. What is left here is the wall's
+   BEHAVIOUR, and every selector is scoped: a swatch on the wall opens an editor, a tile in a
+   read-only grid does not, and this block was reaching both.
+*/
+.wall .swatch {
+    cursor: pointer;
+    /* The point of this transition: when you move an anchor, you SEE green and
+       menthol follow the blue instead of the whole wall snapping. The causality
+       is the product, and 180ms is what makes it legible.
+       `--stagger` is the rung's distance from the middle of the ladder, so the
+       settle spreads outward from where the anchors sit. 26ms per step is under
+       the threshold where it would read as a loading animation. */
+    transition:
+        background-color 240ms var(--ease),
+        box-shadow var(--fast) var(--ease),
+        transform var(--fast) var(--ease);
+    transition-delay: calc(var(--stagger, 0) * 26ms), 0ms, 0ms;
+}
+
+/* During a drag the transition would lag behind the pointer and read as jelly,
+   so it is switched off and restored on release. */
+/* Direct manipulation must be instant: a staggered settle while the value is still moving
+   reads as lag, not as consequence. The cascade is for the release. `dragging` has one writer
+   left — the anchor colour picker, which fires per step while its picker is open. */
+.wall.dragging .swatch {
+    transition: none;
+}
+
+.wall .swatch:hover {
+    transform: translateY(-2px);
+    box-shadow:
+        0 0 0 2px var(--foreground),
+        var(--shadow-lg);
+}
+
+.wall .swatch[aria-pressed='true'] {
+    transform: translateY(-2px);
+}
+
+.wall-family {
+    padding-right: var(--s2);
+}
+.wall-head {
+    padding-bottom: var(--s1);
+}
+
+/* --- collapsible section, for the rules under the palette ----------------- */
+
+.fold > summary {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+    padding: var(--s3) 0;
+    cursor: pointer;
+    list-style: none;
+    color: var(--foreground);
+}
+
+.fold > summary::-webkit-details-marker {
+    display: none;
+}
+
+.fold > summary::before {
+    content: '▸';
+    color: var(--muted-foreground);
+    transition: transform var(--fast) var(--ease);
+    font-size: var(--text-xs);
+}
+
+.fold[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.fold > summary em {
+    margin-left: auto;
+}
+
+.fold-body {
+    padding: var(--s1) 0 var(--s5);
+}
+
+/* --- copy feedback -------------------------------------------------------- */
+
+@keyframes lab-pop {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.toast {
+    position: fixed;
+    bottom: var(--s7);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    padding: var(--s2) var(--s4);
+    animation: lab-pop var(--base) var(--ease);
+    pointer-events: none;
+}
+
+/* The hex is what you came for, so it is a button — click to copy. */
+.insp-hex {
+    padding: 0;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color var(--fast) var(--ease);
+}
+
+.insp-hex:hover {
+    border-bottom-color: var(--muted-foreground);
+}
+
+/* ----------------------------------------------------- component picker --- */
+/* A flat row of the eleven components, not a tree. You do not navigate to a
+   button, you point at one — and the preview beside the table is already
+   showing it. Variants go back to being section headings inside the component,
+   which is what they are. */
+
+.withtree.no-tree {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+/* ------------------------------------------------------------- burndown --- */
+/* The one number this screen is about, so it gets the largest type on it. */
+
+.burndown-figures {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--s5);
+    margin-bottom: var(--s4);
+}
+
+.burndown-figures dd {
+    margin: var(--s1) 0 0;
+}
+
+.burndown-arrow {
+    padding-bottom: 2px;
+}
+
+.burndown-done dd em {
+    font: 400 var(--text-sm) var(--font-sans);
+    margin-left: var(--s1);
+}
+
+/* This session's decisions, alongside what the branch has landed. Numbers rather
+   than a bare colour, because "decided but not yet written" is a different claim
+   from "removed" and the difference matters when you are sizing what is left. */
+
+.burndown-planned dd em {
+    font: 400 var(--text-sm) var(--font-sans);
+    margin-left: var(--s1);
+}
+
+.burndown-bar {
+    display: flex;
+    height: 8px;
+    overflow: hidden;
+}
+
+.burndown-bar span {
+    display: block;
+    height: 100%;
+    transition: width var(--base) var(--ease);
+}
+
+/* Hatched, not merely a second hue: it is a claim about intent rather than about
+   the compiled CSS, and the two must not read as the same kind of fact.
+   `min-width` because one decision out of 521 is 0.4% — under a pixel, so the bar
+   would show nothing at all for work that was genuinely done. */
+.burndown-bar span.planned {
+    min-width: 3px;
+    background: repeating-linear-gradient(
+        135deg,
+        var(--primary),
+        var(--primary) 3px,
+        var(--primary) 3px,
+        var(--primary) 6px
+    );
+}
+
+/* --------------------------------------------------------- site listing --- */
+
+/*
+   A left edge that says "this listing belongs to the row above" is structure, and
+   structure is how content gets grouped here. A left edge in `--primary` is the
+   interactive colour tinting static content, which is not — so it is the theme's border
+   at a hairline, and it groups without claiming to be clickable. Same for
+   `.migedit-sites` and `.insp-scope`.
+*/
+.sitelist {
+    padding: var(--s3);
+}
+
+.sitelist-token {
+    margin-bottom: var(--s3);
+}
+
+.sitelist-token:last-child {
+    margin-bottom: 0;
+}
+
+.sitelist-head {
+    display: flex;
+    align-items: baseline;
+    gap: var(--s2);
+    margin-bottom: var(--s1);
+}
+
+.sitelist-head code {
+    color: var(--foreground);
+}
+
+.sitelist-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s3);
+    padding: 2px 0 2px var(--s3);
+}
+
+.sitelist-row code {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sitelist-row a {
+    flex: 0 0 auto;
+}
+
+/* ------------------------------------------------------- snapshot frames --- */
+/* Both refs stay mounted so switching is instant and the scroll position
+   survives; the inactive one is hidden with visibility, not display. */
+
+.snapshots {
+    position: relative;
+    height: 100%;
+    display: flex;
+}
+
+.snapshot-pane {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+}
+
+.snapshot-tag {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 2;
+    padding: 2px var(--s2);
+    border-bottom-right-radius: var(--radius-sm);
+}
+
+kbd {
+    display: inline-block;
+    padding: 0 4px;
+    border: 1px solid var(--input);
+    border-radius: 3px;
+    background: var(--background);
+    font: var(--text-xs) var(--font-mono);
+    color: var(--muted-foreground);
+}
+
+/* ------------------------------------------------------------ flip cards --- */
+
+.flip {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: var(--s3);
+    align-items: center;
+    padding: var(--s3) var(--s2);
+    margin: 0 calc(-1 * var(--s2));
+    cursor: pointer;
+}
+
+/*
+   The four state rules are at the call site: `hover:bg-muted`, `aria-selected:bg-muted`,
+   `focus-visible:outline-2 focus-visible:outline-primary`, `last:border-b-0`.
+
+   Selection used to be `inset 2px 0 0 var(--primary)` — a coloured left edge on the active
+   item of a list, which is not done here. The fill carries the state and the call site adds
+   `border-primary`, so the card's own edge says it rather than a stripe beside it.
+
+   Only the offset stays below, and it is load-bearing: drawn outside, one row's focus ring
+   would sit under the next row.
+*/
+.flip:focus-visible {
+    outline-offset: -2px;
+}
+
+.flip-swatches {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.flip-swatches span {
+    width: 22px;
+    height: 22px;
+    border: 1px solid color-mix(in srgb, var(--foreground) 14%, transparent);
+}
+
+.flip-ratio {
+    white-space: nowrap;
+}
+
+/* A rejection is not a confirmation: it needs to read as a refusal, and to hold
+   still long enough to be read. */
+/* A rejection is prose rather than a word, so it gets a measure and more room. Its fill,
+   ink, radius and weight are at the call site. */
+.toast.reject {
+    max-width: 60ch;
+    padding: var(--s3) var(--s4);
+}
+
+/* State is a shape first. The ink only reinforces it. */
+.comppick-mark {
+    width: 10px;
+    flex: none;
+}
+
+/* No negative top margin.
+
+   It used to be `calc(var(--s4) * -1 + var(--s1))`, cancelling most of the workspace's
+   24px gap so the note sat tight under the picker it belongs to. That only worked while
+   the picker was a direct child of `.workspace`; once it moved into a row of its own —
+   the trigger plus the Preview toggle — there was no gap left to cancel and the note
+   was pulled up ON TOP of the trigger. The row owns the spacing now. */
+/* An `Alert` now; only the measure and the rhythm above it are left, because a line
+   length is a reading decision and the component has no opinion about it. */
+.comppick-note {
+    margin: var(--s2) 0 0;
+    max-width: 68ch;
+}
+
+/* --------------------------------------------------------- page headings ---- */
+
+/* A count belongs beside the title, not buried in a paragraph under it: it is
+   the one thing you check before reading anything else on the page. */
+.page-tag {
+    margin-left: var(--s3);
+    vertical-align: 0.22em;
+}
+
+.lede em {
+    color: var(--foreground);
+}
+
+/* ------------------------------------------------------------- the chain ---- */
+
+/* The three token tiers, drawn as what they are: a signal path. The number is
+   the ordinal, the count is the size, the line between them says what the link
+   MEANS — which is the fact the whole tool rests on and the one nothing said. */
+.chain {
+    position: relative;
+    padding-bottom: var(--s2);
+}
+
+/* ------------------------------------------------------------- status bar ---- */
+
+/* Each reading gets a label. Three numbers separated by pipes made the bar look
+   like a debug print; naming what is being measured makes it an instrument. */
+.status-group {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 0;
+}
+
+button.status-group {
+    cursor: pointer;
+}
+
+/*
+   Four labels in this file were uppercase with tracking to match — the status bar's group
+   names, the group tree's head, the burndown's figure captions and the exception field's
+   name. The tracking is chrome and had to go; uppercase without its tracking is badly
+   spaced shouting, so the uppercase went too. Sentence case, ranked by weight and ink at
+   the call site. Uppercase labels are a house rule here, not a taste call.
+*/
+.status-label {
+    transition: color var(--fast) var(--ease);
+}
+
+.page-help-body {
+    max-width: 74ch;
+    margin: 0 0 var(--s5);
+    /* The one thing `Alert` does not do: this panel opens, so it animates in. Guarded
+       for `prefers-reduced-motion` further down, like the other two animations here. */
+    animation: help-in var(--base) var(--ease) both;
+}
+
+.page-help-body p {
+    margin: 0 0 var(--s3);
+}
+
+.page-help-body p:last-child {
+    margin-bottom: 0;
+}
+
+@keyframes help-in {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .page-help-body {
+        animation: none;
+    }
+}
+
+/* -------------------------------------------------------- migration editor --- */
+
+/* Framed, because it is a different KIND of work from the rows below it: those
+   edit tokens in this app, these propose edits to the design system's source. */
+.migedit {
+    margin: 0 0 var(--s5);
+    padding: var(--s4) var(--s5) var(--s5);
+    border-left: 3px solid var(--foreground);
+    background: var(--card);
+}
+
+.migedit-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--s5);
+    margin-bottom: var(--s4);
+}
+
+.migedit-head h2 {
+    margin: 0 0 var(--s2);
+    color: var(--foreground);
+}
+
+.migedit-lede {
+    margin: 0;
+    max-width: 66ch;
+}
+
+.migedit-lede em {
+    color: var(--foreground);
+}
+
+.migedit-progress {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--s1);
+    flex: none;
+}
+
+/* The one number this panel is about. */
+.migedit-count {
+    font-variant-numeric: tabular-nums;
+    color: var(--foreground);
+}
+
+.migedit-tbl {
+    margin-top: var(--s2);
+}
+
+.migedit-ref {
+    display: flex;
+    align-items: center;
+    gap: var(--s3);
+    min-width: 0;
+}
+
+/* Big enough to judge a hue against, which is the whole reason it is here. */
+.migedit-swatch {
+    width: 30px;
+    height: 30px;
+    flex: none;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--foreground) 14%, transparent);
+}
+
+/* `min-width: 0` on the grid AND on its children: without it a long selector in
+   a `pre` establishes the track width and the whole expansion pushes past the
+   table it belongs to. A checkbox selector in css-ui is 200 characters. */
+.migedit-sites {
+    padding: var(--s2) 0 var(--s3) var(--s4);
+    margin: 0 var(--s4) var(--s2) var(--s3);
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+}
+
+.migedit-sites > * {
+    min-width: 0;
+}
+
+.migedit-site {
+    display: flex;
+    gap: var(--s3);
+    align-items: baseline;
+}
+
+.migedit-site a {
+    white-space: nowrap;
+}
+
+/* --------------------------------------------------- edit scope (inspector) --- */
+
+/* The scope switch and its consequence, stacked: the control, then a sentence
+   naming exactly what will move. An edit that silently changed eight shades
+   instead of one would be the worst bug this panel could have. */
+.insp-scope {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s3);
+    padding: var(--s4);
+    /* See `.insp-edit` — this is the gap between the scope choice and the colour field. */
+    margin-bottom: var(--s5);
+    max-width: 62ch;
+}
+
+.insp-scope-note b {
+    color: var(--foreground);
+}
+
+/* ------------------------------------------------ per-component exception --- */
+
+.migedit-except {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.migedit-except input {
+    margin: 0;
+}
+
+/* The variable name inside the label keeps its mono voice, so the label reads as
+   "this switch is about THOSE tokens" rather than as prose. */
+.migedit-except code {
+    color: var(--foreground);
+}
+
+/* An escape hatch has to look like one: stated, not tucked away. The app flags
+   this exact shape as a defect elsewhere (the ⤳ mark), so when it is deliberate
+   the reason has to be on screen next to the switch that caused it. */
+.migedit-except-note {
+    margin: var(--s3) 0 0;
+    max-width: 66ch;
+}
+
+.migedit-name {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 5px;
+}
+
+.migedit-name span {
+    white-space: nowrap;
+}
+
+.migedit-name input {
+    flex: 1;
+    min-width: 0;
+    padding: 3px 6px;
+}
+
+/* ------------------------------------------------------- palette actions ---- */
+
+/* Above the wall, because these act ON it.
+   Three actions of three different kinds sat here at one weight and one width:
+   creating a colour, producing a file, and destroying every edit. Ranked now —
+   the creative one keeps the left edge and full ink, the utilities go right at
+   secondary weight, and a hairline says they are a different KIND of thing
+   rather than three peers. */
+.pal-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s4);
+    padding-bottom: var(--s3);
+    flex-wrap: wrap;
+}
+
+.pal-actions-right {
+    display: flex;
+    align-items: center;
+    gap: var(--s3);
+    flex: none;
+}
+
+/* A hairline before the utilities, so the eye reads two groups and not five
+   buttons. */
+.pal-actions-right::before {
+    content: '';
+    align-self: stretch;
+    width: 1px;
+    background: var(--border);
+    margin-right: var(--s1);
+}
+
+/* Destructive, so it asks — in place, at the height of the button it replaced.
+   It used to inflate into a pill wider than everything else on the row, so
+   confirming a destructive action reflowed the bar around it. */
+.pal-confirm {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s2);
+    white-space: nowrap;
+}
+
+/* The editor, anchored to its swatch and out of the flow.
+   The wall is a comparison instrument: while you edit green 600 you are reading
+   it against green 500 and against red 600. A grid row moved every family below
+   it; a panel above the wall moved all of them. This moves nothing. */
+.swatch-cell {
+    position: relative;
+    display: flex;
+    min-width: 0;
+}
+
+.swatch-cell > .swatch {
+    width: 100%;
+}
+
+.swatch-pop {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + var(--s2));
+    left: 0;
+
+    width: 470px;
+    max-width: min(470px, 78vw);
+    background: var(--card);
+    animation: pop-in 140ms var(--ease) both;
+}
+
+/* Right-hand columns anchor to their right edge, or the panel leaves the
+   workspace on the darkest rungs — the ones most worth inspecting. */
+.swatch-pop[data-end] {
+    left: auto;
+    right: 0;
+}
+
+/* Near the bottom of the wall it opens upward, so it never hangs off a screen
+   the whole palette otherwise fits on. */
+.swatch-pop[data-flip] {
+    top: auto;
+    bottom: calc(100% + var(--s2));
+}
+
+/* It is a panel in its own right now, so it drops the card chrome it wore when
+   it was a block in the page. */
+.swatch-pop > .inspector {
+    margin: 0;
+}
+
+@keyframes pop-in {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+}
+
+.swatch-pop[data-flip] {
+    animation-name: pop-in-up;
+}
+
+@keyframes pop-in-up {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .swatch-pop {
+        animation: none;
+    }
+}
+
+.wall-family-name {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Only appears on the families this session added: removing a shipped one would
+   dangle every token that references it. */
+.wall-family-remove {
+    padding: 0 2px;
+    cursor: pointer;
+    opacity: 0;
+    transition:
+        opacity var(--fast) var(--ease),
+        color var(--fast) var(--ease);
+}
+
+.wall-family:hover .wall-family-remove,
+.wall-family-remove:focus-visible {
+    opacity: 1;
+}
+
+/* --------------------------------------------- pointing at a call site ------ */
+
+.migedit-row {
+    cursor: pointer;
+}
+
+/* The selected row and the outline in the preview are the same colour, deliberately:
+   they are two halves of one statement about the same elements. It used to also carry
+   `inset 2px 0 0 var(--primary)` on the first cell — a coloured left edge on an active
+   row, which is not done here. The fill says it on its own. */
+
+.migedit-found {
+    margin-top: 5px;
+}
+
+.migedit-found .warn {
+    color: var(--foreground);
+}
+
+/* The rung control lives in the row it changes: one family's depth is its own. */
+.rung-add {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.rung-ctl {
+    display: flex;
+    gap: 3px;
+    opacity: 0;
+    transition: opacity var(--fast) var(--ease);
+}
+
+.wall:hover .rung-ctl,
+.rung-ctl:focus-within {
+    opacity: 1;
+}
+
+.rung-btn {
+    width: 22px;
+    height: 22px;
+    cursor: pointer;
+    transition:
+        border-color var(--fast) var(--ease),
+        color var(--fast) var(--ease);
+}
+
+.rung-btn:hover {
+    border-style: solid;
+}
+
+.insp-close {
+    width: 24px;
+    height: 24px;
+    flex: none;
+    cursor: pointer;
+    transition:
+        color var(--fast) var(--ease),
+        border-color var(--fast) var(--ease);
+}
+
+.insp-close:hover {
+    color: var(--foreground);
+}
+
+/* A non-colour token's identity is its UNIT, so that is what sits where the
+   swatch would be. A grey circle next to `36px` would be a lie about the value. */
+.unit-tag {
+    flex: none;
+    padding: 1px 5px;
+    white-space: nowrap;
+}
+
+/* Copy and Reset sit together under the count they act on, and wrap rather than
+   widening the header when the confirm replaces one of them. */
+.migedit-acts {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+/* Provenance of what the preview is showing. `story` is the design system's own
+   markup; `hand-written` is this app's. The distinction matters because a story's
+   placeholder content makes a real component look fabricated. */
+.fx-origin {
+    flex: none;
+    padding: 1px 5px;
+    white-space: nowrap;
+}
+
+/* `data-origin='story'` used to tint this chip's border with `--primary`. It is
+   `[&[data-origin=story]]:border-primary` at the call site now. */
+
+/* The source, quoted. Two lines when a decision is made: what the file says now,
+   struck through, and what it would say. */
+.migedit-site-block {
+    margin-bottom: var(--s2);
+}
+
+.migedit-css {
+    margin: 3px 0 0;
+    min-width: 0;
+    max-width: 100%;
+    padding: var(--s2) var(--s3);
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-x: auto;
+}
+
+/* ------------------------------------------------------------- css lens ---- */
+/* Reading a component's whole compiled stylesheet, to confirm it is finished.
+   Monospace and dense on purpose: this is source, and the eye is scanning for one
+   thing — a `--ref-color-*` that is not `v3`. */
+
+.csslens-head {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+}
+
+.csslens-ref {
+    margin-left: auto;
+}
+
+.csslens-lede {
+    margin: var(--s3) 0;
+    max-width: 74ch;
+}
+
+.csslens-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+    margin-bottom: var(--s3);
+}
+
+.csslens-names {
+    margin: 0 0 var(--s3);
+}
+
+.csslens-names code {
+    margin-right: var(--s2);
+}
+
+/* Scrolls inside its own box: 98 rules is 12 kB of text, and the page must not
+   become a mile long because a panel was expanded. */
+.csslens-rules {
+    max-height: 420px;
+    overflow: auto;
+}
+
+.csslens-rule {
+    padding: var(--s2) var(--s3);
+    min-width: 0;
+}
+
+.csslens-sel {
+    word-break: break-all;
+}
+
+/* 13px, on a 28px line.
+
+   The body was 11px while the pickers sitting in it are ~28px tall, so the code read as
+   small print around its own controls — and only the lines carrying a slot grew, so the
+   block lost its rhythm line by line. `line-height: 28px` is the slot's height, which
+   makes every line the same height whether it holds a control or not. */
+.csslens-body {
+    margin: var(--s1) 0 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* A `var()` you can operate, inline in the code.
+
+   `.csslens-raw` used to `<mark>` the V2 names here — a highlight that said "this is debt"
+   and left you to find the matching row in the table above to act on it. These slots hold a
+   real picker instead, so they have to read as part of the declaration while still looking
+   operable: `inline-flex` and `baseline` keep them sitting on the code's own line rather
+   than pushing it around, and the trigger inside is sized down to the body's 11px. */
+.csslens-slot {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    vertical-align: baseline;
+}
+
+.csslens-slot button {
+    height: auto;
+    min-height: 0;
+    padding: 0 4px;
+}
+
+/* The chosen token, after the arrow. `--ok` because a decided call site is the good
+   state here, and it is the only green on a screen otherwise reporting debt. */
+.csslens-becomes {
+    white-space: nowrap;
+}
+
+/* A V3 shade or a non-colour ref: shown, not offered. Dimmer than the code around it so
+   it does not read as something that failed to become a control. */
+
+/* The file a decision edits, in the row. Stacked because the chip is a claim about
+   scope and wants its own line rather than competing with the path. */
+.migedit-edit {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    min-width: 0;
+}
+
+/* The line list and the CSS control on one row.
+
+   `.migedit-edit` is a column, so a button appended to it landed on its own line and cost
+   14px of row height — measured 86px before, 100px after. The button reveals exactly those
+   lines, so it sits beside them and the row goes back to one line per fact. */
+.migedit-edit-lines {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.workfile-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+    margin-bottom: var(--s3);
+}
+
+.workfile-path {
+    word-break: break-all;
+}
+
+.workfile-decision {
+    padding: var(--s2) var(--s3);
+}
+
+.workfile-decision-head {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+    flex-wrap: wrap;
+}
+
+/* The components one decision reaches. Buttons, because each one is the way to go
+   and judge it against something you can actually look at. */
+.workfile-decision-comps {
+    display: flex;
+    gap: var(--s2);
+    flex-wrap: wrap;
+    margin-top: var(--s1);
+}
+
+.workfile-decision-lines {
+    display: flex;
+    gap: var(--s2);
+    margin-top: var(--s1);
+}
+
+/* The invisible-swap batch. Accented rather than warned: it is the one action here
+   that is safe by construction, and it should read that way. */
+.workfile-batch {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--s3);
+    padding: var(--s2) var(--s3);
+    margin-bottom: var(--s3);
+    color: var(--foreground);
+}
+
+/* ------------------------------------------------------- snapshot status ---- */
+
+/*
+ * Anchored above the status bar rather than inside it: the bar is 11px tall text on one
+ * line, and the freshness answer is a table plus a command log. Fixed positioning keeps
+ * it off the grid, so opening it cannot push the workspace sideways — the defect that
+ * made every candidate picker in this app shift the layout under the cursor.
+ */
+.snapshot-pop {
+    position: fixed;
+    right: 12px;
+    bottom: 34px;
+    z-index: 40;
+    width: min(560px, calc(100vw - 24px));
+    padding: var(--s3);
+    background: var(--card);
+}
+
+.snapshot-pop-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--s2);
+}
+
+.snapshot-refs {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: var(--s2);
+}
+
+.snapshot-refs th {
+    text-align: left;
+    padding: 2px 8px 2px 0;
+    white-space: nowrap;
+}
+
+.snapshot-refs td {
+    padding: 2px 8px 2px 0;
+    vertical-align: baseline;
+    /* `3 behind -> 6d3ae6b` is one fact and wrapped mid-arrow, putting the target commit
+       on the line below under a different column. The subject cell overrides this. */
+    white-space: nowrap;
+}
+
+/* The commit subject is the one thing here that has no length limit. It gets the
+   remaining width and an ellipsis, with the full text in `title`. */
+.snapshot-subject {
+    max-width: 0;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.snapshot-detail {
+    margin: 0 0 var(--s2);
+}
+
+.snapshot-failed {
+    margin: var(--s2) 0 0;
+    padding: 6px 8px;
+    border: 1px solid color-mix(in srgb, var(--destructive) 45%, transparent);
+    background: color-mix(in srgb, var(--destructive) 12%, transparent);
+    color: var(--foreground);
+}
+
+.snapshot-log {
+    margin: var(--s2) 0 0;
+    max-height: 220px;
+    overflow: auto;
+    padding: 8px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------ decision strip ---- */
+
+/*
+ * Sits between the preview toolbar and the frame, only while a migration row is
+ * selected. It carries the one comparison the dock existed to make and never showed:
+ * the colour the call site paints today next to the colour the chosen token resolves to.
+ */
+.decision-strip {
+    flex: 0 0 auto;
+    padding: var(--s2) var(--s3);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.decision-strip-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s2);
+}
+
+.decision-title {
+    color: var(--foreground);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.decision-state {
+    margin-left: 6px;
+    padding: 0 6px;
+    background: var(--card);
+    white-space: nowrap;
+}
+
+.decision-baw {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+    flex-wrap: wrap;
+}
+
+.decision-half {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.decision-cap {
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* A visible chip of colour, or a checker that reads unmistakably as "no colour". */
+.decision-swatch {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+}
+
+.decision-swatch-empty,
+.decision-swatch:not([style]) {
+    background-image:
+        linear-gradient(45deg, var(--border) 25%, transparent 25%),
+        linear-gradient(-45deg, var(--border) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, var(--border) 75%),
+        linear-gradient(-45deg, transparent 75%, var(--border) 75%);
+    background-size: 8px 8px;
+    background-position:
+        0 0,
+        0 4px,
+        4px -4px,
+        -4px 0;
+}
+
+/* --------------------------------------------------- figma reference wall ---- */
+
+/* The Figma collections, drawn as the palette wall is drawn.
+
+   Its own grid rather than `.wall`: `.wall` hard-codes `repeat(10, ...)` and PaletteWall
+   writes a matching inline value on mount, so borrowing it would tie this card to the
+   solved palette's rung count. Here the column count comes from the widest Figma ladder,
+   which is 10 for grey and 8 for the chromatics. */
+/* The label is OUTSIDE the tile grid, and that is the whole point of the flex row.
+
+   It used to be column 1 of one grid holding both. In a grid with `auto-fill`, the item after
+   the last column wraps to column 1 — so the eleventh tile of a row landed underneath the row
+   LABEL, reading as a colour belonging to the next group. Splitting them means tiles can only
+   ever wrap under tiles. */
+.figma-wall {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--s1);
+}
+
+.figma-wall > .wall-family {
+    flex: 0 0 104px;
+    /* Aligned with the first row of tiles rather than centred against a block that may be
+       three rows tall. */
+    padding-top: 6px;
+}
+
+.figma-wall-tiles {
+    flex: 1;
+    min-width: 0;
+    display: grid;
+    gap: var(--s1);
+}
+
+/* Near-square, like the wall. `minmax(84px, 1fr)` against the wall's own 72px height: the
+   group tree leaves short leaf names on the tiles — `default`, `hovered`, `clicked` — so the
+   132px the flat version needed is no longer bought by anything, and a wide rectangle read as
+   a different component from the palette above it. */
+.figma-wall-free .figma-wall-tiles {
+    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+}
+
+/* The wall's tile, minus the behaviour. Nothing in this card is editable, so the pointer
+   and the hover ring would both promise an editor that is not there. */
+/*
+   Nothing to undo any more. This was `cursor: default`, cancelling a `cursor: pointer` the
+   base `.swatch` should never have carried — the pointer belongs to `.wall .swatch`, which is
+   the only swatch you can click. Kept as a hook for the two rules below.
+*/
+
+/* A name Figma has and the compiled CSS does not.
+
+   This was a 2px dashed outline, and it was wrong: 62 of the 95 reference colours are in that
+   state, so the card read as 62 errors and the outlines competed with the very colours it
+   exists to show. The count belongs in the header, where it already is, and the per-tile mark
+   only has to be findable — so it is the corner notch the wall already uses for "something is
+   true about this shade", at the opposite corner from the clamp mark so the two can coexist. */
+.figma-tile-new::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 0 5px 0 0;
+    background: linear-gradient(225deg, currentColor 0 50%, transparent 50%);
+    opacity: 0.35;
+}
+
+/* The head is a rung on a ladder row and a full state name elsewhere, so it has to be able
+   to take two lines without pushing the hex out of the tile. */
+.figma-tile .swatch-rung {
+    white-space: normal;
+    overflow: hidden;
+}

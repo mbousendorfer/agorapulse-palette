@@ -1,0 +1,324 @@
+/**
+ * The theme: shadcn's stock theme, unmodified. No preset, no custom palette.
+ *
+ * Every token below is exactly what `npx shadcn@latest init` writes — verified by running it
+ * into a scratch project and diffing, not from memory, which was worth doing: two of the
+ * things I would have assumed are wrong. Stock's five `--chart-*` are all GREYS, and the
+ * radius scale is multiplicative (`calc(var(--radius) * 0.6)`) where this file previously used
+ * shadcn's older subtractive form.
+ *
+ * ## What that means for this app, plainly
+ *
+ * Stock shadcn has exactly ONE chromatic token: `--destructive`. Every surface, every ink,
+ * every border and all five chart colours are `oklch(L 0 0)` — zero chroma. Plus one blue at
+ * `--sidebar-primary` in the dark half only, which nothing here uses.
+ *
+ * So the interface is achromatic apart from errors, and that is the point rather than a
+ * shortfall. Three themes were tried here and each was replaced: `autoblog` (near-black with a
+ * saturated orange), `examdedo` (warm sand), `Orange Theme` (neutral + orange-600) and
+ * `Cosmic Night` (violet). The tool's job is judging 66 hues, and a chrome with a hue of its
+ * own biases that judgement; stock is the only option that has no opinion to bias it with.
+ *
+ * ## The one consequence that cost something
+ *
+ * The app has three verdicts to show — holds / holds with no slack / broken — and used to have
+ * three hues for them, via two added tokens `--ok` and `--warn`. Stock has no green and no
+ * amber, so those tokens are GONE rather than redefined, and the verdicts are now carried by
+ * ink weight and one red:
+ *
+ *   ok     `text-muted-foreground`            quiet; nothing needs attention
+ *   warn   `text-foreground font-medium`      full-strength ink; look here
+ *   bad    `text-destructive`                 the only colour stock offers
+ *
+ * That is also the house rule for this codebase — hierarchise by weight and size, not by
+ * dropping text into a lighter grey — and it is what shadcn's own documentation does.
+ *
+ * ## What is NOT stock here, and why each one stays
+ *
+ * The layer plumbing below is architecture rather than theme. `app.css` has to be imported
+ * INTO the components layer or its ~170 class rules outrank every Tailwind utility;
+ * `tw-animate-css` has to be imported unlayered or Tailwind rejects its `@utility`
+ * declarations; and the reduced-motion guard exists because `tw-animate-css` does not honour
+ * the setting. None of the three touches a colour.
+ *
+ * Stock also imports `shadcn/tailwind.css` for its `data-*` custom variants, `no-scrollbar`
+ * and scroll-fade utilities. Checked before leaving it out: none of the fifteen installed
+ * components references any of them.
+ *
+ * Nothing here reaches the preview. The design system renders in a same-origin iframe that
+ * builds its own document from the vendored snapshot, so neither these tokens nor Tailwind's
+ * preflight can change what the tool reports.
+ */
+
+/*
+  Imported in explicit layers rather than as one `@import 'tailwindcss'`.
+
+  Preflight is a global reset landing on a 3293-line stylesheet written before it
+  existed, so it was checked rather than assumed: Reference, Component tokens and
+  Migration all render identically with it on and off. `app.css` states its own
+  values for everything it draws, which is why. The single visible difference is
+  that preflight removes the default underline from a bare `<a>`; the only bare
+  anchors are the source links in the migration table, which keep their own style.
+
+  So preflight stays, and the layers are explicit only so the order is legible
+  while two stylesheets coexist. What is deliberately NOT taken is shadcn's
+  `@layer base { * { @apply border-border } }` — see the note further down.
+*/
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/preflight.css' layer(base);
+/*
+   `app.css` is imported INTO the components layer, and that one word is what stops it
+   overriding shadcn.
+
+   Unlayered CSS outranks every layer regardless of specificity. So for as long as
+   `app.css` sat outside the layers, each of its ~200 class rules beat every Tailwind
+   utility on the same element — `<Card className="csslens">` was styled by `.csslens`, not
+   by `Card`. That is not a bug you fix rule by rule; three separate symptoms came from it
+   in one afternoon: white borders everywhere, an orange permanent outline on every search
+   box, and cyan panels where the theme wanted grey.
+
+   Layered in `components`, the order is finally the intended one:
+   preflight < app.css < utilities. shadcn components win on anything they set, app.css
+   still wins over preflight, and it keeps the layout the components do not describe.
+*/
+@import './app.css' layer(components);
+@import 'tailwindcss/utilities.css' layer(utilities);
+/*
+   The enter/exit animations every shadcn overlay asks for, which were missing entirely.
+
+   `popover.tsx`, `dialog.tsx`, `tooltip.tsx` and `command.tsx` all carry
+   `animate-in fade-in-0 zoom-in-95 slide-in-from-*`. Without this import those compile to
+   nothing: measured in the browser, `animationName: none` and no `enter`/`exit` keyframes in
+   any stylesheet. The seam was visible — `app.css` animates the hand-rolled swatch pop, and
+   the four real `PopoverContent`s appeared instantly beside it.
+
+   Imported WITHOUT `layer(...)`, and that is required rather than sloppy: the package is a
+   set of `@utility` declarations, and Tailwind rejects those inside a layer — `@utility cannot
+   be nested`, which took the whole stylesheet down when it was tried. It does not weaken the
+   ordering either, because an `@utility` is registered with Tailwind and emitted by Tailwind
+   into the `utilities` layer itself. Verified below.
+*/
+@import 'tw-animate-css';
+
+/*
+   `tw-animate-css` does not honour `prefers-reduced-motion` — verified, zero occurrences in
+   its stylesheet. `app.css` guards its own two animations (`.page-help-body`, `.swatch-pop`),
+   so importing a library that ignores the setting would regress a standard this project
+   already holds itself to. Every shadcn primitive carries `data-slot`, which is the one
+   selector that reaches all of them.
+*/
+@media (prefers-reduced-motion: reduce) {
+    [data-slot] {
+        animation-duration: 1ms !important;
+        transition-duration: 1ms !important;
+    }
+}
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+   TWO MODES: `:root` is LIGHT and `.dark` overrides it, which is shadcn's convention.
+
+   Both blocks are `shadcn init`'s output, copied token for token. `oklch()` is kept rather
+   than converted to hex, because that is the form shadcn ships and converting would make a
+   future diff against the CLI harder for no gain.
+
+   Two things to know when reading contrast numbers off this palette:
+
+     `--primary` in light is `oklch(0.205 0 0)` — near-black, NOT a brand colour. So a filled
+     Button is a black button with near-white text, at 15.4:1, and `text-primary` is
+     indistinguishable from `text-foreground` at a glance. The app has 28 `text-primary` sites
+     that used to be orange, then violet; they are now ink. That is stock.
+
+     `--border` and `--input` in DARK are translucent white — `oklch(1 0 0 / 10%)` and
+     `/ 15%` — not solid colours. They composite over whatever is behind them, which is why
+     they are the one pair here that cannot be given a single contrast figure.
+
+     `--accent`, `--muted` and `--secondary` are THE SAME VALUE in both halves: #f5f5f5 in
+     light, #262626 in dark. So any component that marks a state by filling with `--accent`
+     against a `--muted` ground has a fill that measures 1.00:1 — no difference at all. Two
+     things in this app do: the segmented control's selected pill, which falls back to its
+     `shadow-sm`, and the nav rail's active item, whose `--sidebar-accent` lands 1.04:1 on
+     `--sidebar`. The rail therefore also carries `font-medium`, which is how shadcn's own
+     Sidebar marks an active item; see `App.tsx`. Neither is worked around in this file.
+
+   Measured, so the numbers are here rather than guessed at: `--foreground` 19.80:1 on
+   background, `--primary` 17.93:1 as ink and 17.18:1 under its own, `--destructive` 4.77:1 in
+   light and 6.21:1 in dark. Only one falls short: `--muted-foreground` is 4.35:1 on `--muted`
+   and on `--accent`, against AA's 4.50. That is stock's own value and it stays.
+
+   dark is still the DEFAULT, and still not the system setting. Every surface in this app is a
+   background against which somebody is judging a hue; light is offered because it was asked
+   for.
+*/
+:root {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0); /* #0a0a0a — 19.80:1 on background */
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.205 0 0); /* near-black — see the note above */
+    --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.97 0 0);
+    --secondary-foreground: oklch(0.205 0 0);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0); /* #737373 — 4.74:1 on card, 4.35:1 on muted */
+    --accent: oklch(0.97 0 0); /* IDENTICAL to --muted and --secondary — see below */
+    --accent-foreground: oklch(0.205 0 0);
+    --destructive: oklch(0.577 0.245 27.325); /* the only chromatic token here */
+    --border: oklch(0.922 0 0);
+    --input: oklch(0.922 0 0);
+    --ring: oklch(0.708 0 0);
+    /* All five are greys. Nothing here uses them: the palette under test may not paint the
+       tool inspecting it, so there are no charts to colour. */
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --radius: 0.625rem;
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-primary: oklch(0.205 0 0);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.97 0 0);
+    --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-ring: oklch(0.708 0 0);
+
+    color-scheme: light;
+}
+
+.dark {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.922 0 0); /* near-white here, so a filled Button inverts */
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%); /* translucent, not a colour */
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.556 0 0);
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.488 0.243 264.376); /* a blue, and nothing here uses it */
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.556 0 0);
+
+    color-scheme: dark;
+}
+
+@theme inline {
+    /*
+       Stock's radius scale, and it is MULTIPLICATIVE. This file previously carried shadcn's
+       older subtractive form (`calc(var(--radius) - 4px)`), which at a small `--radius` drove
+       `rounded-sm` to literally 0. The current CLI writes ratios, so the tiers stay in
+       proportion at any radius, and it adds three tiers this file did not have.
+    */
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-chart-1: var(--chart-1);
+    --color-chart-2: var(--chart-2);
+    --color-chart-3: var(--chart-3);
+    --color-chart-4: var(--chart-4);
+    --color-chart-5: var(--chart-5);
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-ring: var(--sidebar-ring);
+
+    /*
+       Stock declares only `--font-sans` (Geist, which `shadcn init` vendors) and
+       `--font-heading` aliased to it. There is deliberately NO `--font-mono` here: leaving it
+       unset lets Tailwind's own stack apply, `ui-monospace, SFMono-Regular, Menlo, …`, which
+       is a real monospace and keeps the palette wall's 66 hex read-outs in columns. Declaring
+       one would be a theme customisation for no gain.
+
+       No `--shadow-*` either, for the same reason. Tailwind defines the whole scale, and the
+       one rule in `app.css` that reads a shadow variable — `.swatch:hover` — now resolves
+       `var(--shadow-lg)` to Tailwind's `0 10px 15px -3px rgb(0 0 0 / 0.1), …`. Verified that
+       it is defined rather than assumed; a stock theme that silently deleted the hover
+       elevation would have been a quiet regression.
+    */
+    --font-heading: var(--font-sans);
+    --font-sans: 'Geist Variable', sans-serif;
+}
+
+/*
+   Stock's base layer. The `html { font-sans }` rule is shadcn's and was missing from this
+   file, which is why `--font-sans` used to be applied by `app.css` on `body` instead.
+*/
+@layer base {
+    html {
+        @apply font-sans;
+    }
+}
+
+/*
+  This rule is not optional, and leaving it out was a mistake worth recording.
+
+  Tailwind's `border-*` utilities set border WIDTH. The colour comes from
+  `border-color`, which CSS defaults to `currentColor` — so `border-b` on a table row
+  draws in the row's TEXT colour. In a dark theme that is near-white, and the result was
+  every table row, every card and every outline button outlined in hard white.
+
+  shadcn ships this rule for exactly that reason. It was held back while `app.css` still
+  painted screens, because at specificity zero it would have repainted any legacy rule
+  that set a border width without restating its colour. No screen reads `app.css` for its
+  borders any more, so the condition has passed.
+
+  Nothing in this file may be reached for as an alternative: the fix is the base rule, not
+  a `border-border` sprinkled onto each component that looked wrong.
+*/
+@layer base {
+    * {
+        @apply border-border outline-ring/50;
+    }
+}
