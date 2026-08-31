@@ -514,14 +514,14 @@ export function RungInspector({ family, rung }: { family: string; rung: number }
                         >
                             <SegmentedItem
                                 value="oklch"
-                                className="px-2 font-mono text-[11px]"
+                                className="px-2 font-mono text-xs"
                                 title="Perceptual — the space the ladder is built in"
                             >
                                 OKLCH
                             </SegmentedItem>
                             <SegmentedItem
                                 value="hsl"
-                                className="px-2 font-mono text-[11px]"
+                                className="px-2 font-mono text-xs"
                                 title="CSS sRGB — what a picker or a stylesheet will hand you"
                             >
                                 HSL

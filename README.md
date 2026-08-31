@@ -4,8 +4,9 @@ A colour editor for the Agorapulse V3 reference palette. Move an anchor and watc
 66 shades re-derive on the shared ladder; hold one shade off the ladder with a recorded
 reason; add a family from a hue or a hex.
 
-**⚠️ Private.** It vendors design tokens from the private `agorapulse/design`
-repository — see [LICENSE](LICENSE) for what that does and does not cover.
+**Public, but not open source.** Readable is not the same as licensed — see
+[LICENSE](LICENSE) for the inventory of what publishing this exposes, and for what it
+deliberately does not carry.
 
 ## The one idea
 

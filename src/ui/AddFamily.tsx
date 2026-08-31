@@ -214,7 +214,7 @@ function AddFamilyForm({ onDone }: { onDone: () => void }) {
                                     <div
                                         key={r.rung}
                                         title={`${r.rung} — ${r.hex}`}
-                                        className="font-mono flex flex-1 flex-col justify-between rounded-md p-1.5 text-[10px]/tight"
+                                        className="font-mono flex flex-1 flex-col justify-between rounded-md p-1.5 text-xs/tight"
                                         style={{
                                             height: 72,
                                             background: r.hex,
@@ -333,7 +333,7 @@ function AddFamilyForm({ onDone }: { onDone: () => void }) {
                             className="w-48"
                         />
                         {cssVar && (
-                            <span className="text-muted-foreground font-mono text-[11px]">
+                            <span className="text-muted-foreground font-mono text-xs">
                                 {cssVar}
                             </span>
                         )}

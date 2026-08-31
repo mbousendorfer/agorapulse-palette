@@ -1,5 +1,51 @@
 /**
- * The theme: shadcn's stock theme, unmodified. No preset, no custom palette.
+ * The theme: shadcn's stock theme, plus FIVE measured achromatic deviations.
+ *
+ * ## The five deviations, and what each one bought
+ *
+ * This file said "stock, unmodified", and that claim is retired rather than quietly broken.
+ * Every deviation is **chroma 0**, so the argument further down about a hue-free chrome is
+ * untouched — these move lightness only, and the tool still has no opinion of its own to
+ * bias the judgement of 66 hues with.
+ *
+ * Stock makes `--accent`, `--muted` and `--secondary` the SAME VALUE, so every fill that
+ * marks a selected or hovered state measured 1.00:1 against its own ground. Measured before
+ * and after:
+ *
+ *                                     stock    now
+ *   `--accent` vs `--muted`            1.00    1.20   (light)
+ *   `--accent` vs `--muted`            1.00    1.29   (dark)
+ *   focus ring vs the card             2.59    6.00   (light, at full strength)
+ *   focus ring vs the background       4.18    7.98   (dark)
+ *   `--input` edge vs a muted track    1.62    2.68   (dark)
+ *
+ * `--accent-foreground` still clears everything on the new fill — 13.71:1 light, 11.26:1
+ * dark — so no ink had to move with it.
+ *
+ * ## The focus ring is the one worth reading
+ *
+ * Stock's only project-wide keyboard affordance is `* { outline-ring/50 }`, which draws at
+ * **50% alpha**. Measured across the whole lightness range, a 50%-alpha ring CANNOT clear
+ * WCAG 1.4.11's 3:1 in light mode at any value — even a near-black `--ring` composites to
+ * 2.51:1 over white. So no choice of `--ring` fixes it: the alpha is the defect, and there
+ * is a real `*:focus-visible` rule at the bottom of this file now.
+ *
+ * That matters here rather than being a nicety, because almost nothing in this app styles
+ * its own focus: the 66 swatches of the wall, the rung +/- pair and the copy-the-hex button
+ * all fell through to that rule, at 1.54:1.
+ *
+ * ## What is deliberately NOT deviated
+ *
+ * `--muted` stays stock. It is the quiet ground under most of the app AND the segmented
+ * control's track, and darkening it to widen the pill gap would have cost contrast on
+ * `--muted-foreground`, already the tightest pair here. Moving `--accent` instead also gives
+ * the two tokens the distinct jobs their names imply: `--muted` is a quiet ground, `--accent`
+ * is a selected or hovered one.
+ *
+ * Light `--input` stays stock too. It is used about half for operable edges and about half
+ * for decoration — the inspector's border, the `.mark` badges, `.decision-swatch` — so
+ * raising it to 3:1 would have thickened every panel hairline. Only the dark half carries a
+ * state (it is the segmented pill's only edge there), so only the dark half moved.
  *
  * Every token below is exactly what `npx shadcn@latest init` writes — verified by running it
  * into a scratch project and diffing, not from memory, which was worth doing: two of the
@@ -165,12 +211,17 @@
     --secondary-foreground: oklch(0.205 0 0);
     --muted: oklch(0.97 0 0);
     --muted-foreground: oklch(0.556 0 0); /* #737373 — 4.74:1 on card, 4.35:1 on muted */
-    --accent: oklch(0.97 0 0); /* IDENTICAL to --muted and --secondary — see below */
+    /* DEVIATION 1/5. Stock is 0.97 — identical to `--muted` and `--secondary`, so every
+       selected or hovered fill measured 1.00:1 against its own ground. 0.91 measures
+       1.20:1 on `--muted` and 1.31:1 on the card, with ink at 13.71:1. */
+    --accent: oklch(0.91 0 0);
     --accent-foreground: oklch(0.205 0 0);
     --destructive: oklch(0.577 0.245 27.325); /* the only chromatic token here */
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
+    /* DEVIATION 2/5. Stock 0.708 is 2.59:1 on the card at full strength and 1.54:1 through
+       the 50% alpha every focus indicator draws it at. 0.50 is 6.00:1. */
+    --ring: oklch(0.5 0 0);
     /* All five are greys. Nothing here uses them: the palette under test may not paint the
        tool inspecting it, so there are no charts to colour. */
     --chart-1: oklch(0.87 0 0);
@@ -183,7 +234,9 @@
     --sidebar-foreground: oklch(0.145 0 0);
     --sidebar-primary: oklch(0.205 0 0);
     --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
+    /* DEVIATION 3/5. Same reason as `--accent`, on the rail's scale. Nothing in this app
+       uses a sidebar any more, and it moves with its twin so the pair cannot drift. */
+    --sidebar-accent: oklch(0.91 0 0);
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.708 0 0);
@@ -204,12 +257,17 @@
     --secondary-foreground: oklch(0.985 0 0);
     --muted: oklch(0.269 0 0);
     --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
+    /* DEVIATION 1/5, dark half. Stock 0.269 is `--muted` exactly; 0.34 measures 1.29:1. */
+    --accent: oklch(0.34 0 0);
     --accent-foreground: oklch(0.985 0 0);
     --destructive: oklch(0.704 0.191 22.216);
     --border: oklch(1 0 0 / 10%); /* translucent, not a colour */
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
+    /* DEVIATION 4/5. Still translucent, so it still composites over what is behind it —
+       only the alpha moved, 15% to 30%. This is the segmented pill's only edge in dark
+       mode: 1.62:1 against the track before, 2.68:1 now. */
+    --input: oklch(1 0 0 / 30%);
+    /* DEVIATION 2/5, dark half. 4.18:1 at full strength, 1.87:1 through the alpha. */
+    --ring: oklch(0.72 0 0);
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
@@ -219,7 +277,8 @@
     --sidebar-foreground: oklch(0.985 0 0);
     --sidebar-primary: oklch(0.488 0.243 264.376); /* a blue, and nothing here uses it */
     --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
+    /* DEVIATION 3/5, dark half. */
+    --sidebar-accent: oklch(0.34 0 0);
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.556 0 0);
@@ -320,5 +379,23 @@
 @layer base {
     * {
         @apply border-border outline-ring/50;
+    }
+}
+
+/*
+  DEVIATION 5/5: a focus indicator that is actually visible.
+
+  The rule above sets outline COLOUR only, at 50% alpha, and leaves width and style to the
+  UA. Measured across the whole lightness range, that alpha cannot clear 1.4.11's 3:1 in
+  light mode at any `--ring` value, so it had to go rather than be tuned.
+
+  Specificity zero and in the `base` layer, so every shadcn primitive's own
+  `focus-visible:ring-[3px]` still wins where it exists (utilities beat base) and this only
+  reaches what nothing else styles — which here is most of the app.
+*/
+@layer base {
+    *:focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
     }
 }

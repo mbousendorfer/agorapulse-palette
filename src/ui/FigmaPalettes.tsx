@@ -270,21 +270,36 @@ export function FigmaPalettes() {
                 </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
+                {/*
+                   The collection switch is gone with the collections it switched between.
+
+                   This was a three-item `Segmented` — reference / system / component — and the
+                   export it read now carries the reference collection alone: the other two named
+                   771 internal design-system tokens and came out when this repo went public. A
+                   one-item segmented control is a button that reports what you are already
+                   looking at, so the row is just the count now.
+
+                   `COLLECTIONS` is still an array and `collection` is still state, deliberately:
+                   re-vendoring an export with more collections should bring the switch back, not
+                   silently show the first one. Hence the guard below rather than an assumption.
+                */}
                 <div className="flex flex-wrap items-center gap-3">
-                    <Segmented
-                        type="single"
-                        size="sm"
-                        value={collection}
-                        /* The group emits '' when you click the active item; without this guard
-                           that would leave no collection selected and an empty card. */
-                        onValueChange={(v) => v && setCollection(v as FigmaCollection)}
-                    >
-                        {COLLECTIONS.map((c) => (
-                            <SegmentedItem key={c.collection} value={c.collection}>
-                                {LABEL[c.collection]}
-                            </SegmentedItem>
-                        ))}
-                    </Segmented>
+                    {COLLECTIONS.length > 1 && (
+                        <Segmented
+                            type="single"
+                            size="sm"
+                            value={collection}
+                            /* The group emits '' when you click the active item; without this
+                               guard that would leave no collection selected and an empty card. */
+                            onValueChange={(v) => v && setCollection(v as FigmaCollection)}
+                        >
+                            {COLLECTIONS.map((c) => (
+                                <SegmentedItem key={c.collection} value={c.collection}>
+                                    {LABEL[c.collection]}
+                                </SegmentedItem>
+                            ))}
+                        </Segmented>
+                    )}
                     <span className="text-muted-foreground text-xs">
                         {colours.length} colours · mode {current.mode}
                         {missing > 0 && ` · ${missing} not in the CSS`}

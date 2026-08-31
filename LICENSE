@@ -5,10 +5,19 @@ this code. It is readable because the repository is public; that is not permissi
 
 ## What being public exposes, decided knowingly
 
-  - `vendor/tokens/` — a snapshot of the design tokens from `agorapulse/design`,
-    which is itself a private repository.
-  - `vendor/figma-variables.json` — an export of the Agorapulse Figma variable
-    collections.
+  - `vendor/tokens/reference/` — the REFERENCE tier only: the 66-shade brand palette
+    plus the reference spacing, radius, font, animation and transition scales, from
+    `agorapulse/design`, which is itself a private repository.
+  - `vendor/figma-variables.json` — the REFERENCE collection of the Agorapulse Figma
+    variable export.
+
+The inventory used to be wider on both lines, and the reduction is the point: the
+`system/` and `components/` token files (263 and 508 values) and the `system` and
+`component` Figma collections (130 and 69 names) were removed. The 66 reference hexes
+are brand colours that appear in every shipped interface; the semantic and component
+vocabulary is the internal structure of a private design system, which is a different
+kind of thing to publish, and this tool never needed it — nothing outside the reference
+tier is read by the engine, the wall or the fidelity harness.
   - `spec/palette.baseline.json` — five brand anchor hexes and seven family hues.
     Not the whole palette; the other 66 shades are solved from these.
 

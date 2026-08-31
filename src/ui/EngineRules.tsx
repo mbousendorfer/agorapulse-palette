@@ -411,7 +411,7 @@ function AnchorField({
             />
             {/* Next to the value, not at the far edge of the card. */}
             {o && (
-                <span className="text-muted-foreground shrink-0 font-mono text-[11px] tabular-nums">
+                <span className="text-muted-foreground shrink-0 font-mono text-xs tabular-nums">
                     L {o.L.toFixed(4)} · C {o.C.toFixed(3)} · h {o.H.toFixed(1)}°
                 </span>
             )}
@@ -421,7 +421,7 @@ function AnchorField({
             */}
             {moves !== undefined && (
                 <span
-                    className="text-muted-foreground shrink-0 text-[11px] tabular-nums"
+                    className="text-muted-foreground shrink-0 text-xs tabular-nums"
                     title={
                         moves === null
                             ? 'A 0.01 nudge does not solve in either direction from here — this anchor sits against a constraint'

@@ -220,44 +220,7 @@ body {
 }
 
 /* Flex children shrink to their content by default; these two must not. */
-.workspace > .withtree,
 .workspace > [data-slot='table-container'] {
-    min-width: 0;
-}
-
-/* The preview, in a tab rather than pinned to the window edge.
-
-   As `.dock` this was a flex column with a left border, filling a 380px grid column. In a tab
-   it has the full workspace width and needs no border to separate it from anything, but it
-   still wants a height: the iframe inside has no intrinsic one, so without this the panel
-   collapses to its toolbar. */
-.preview-panel {
-    display: flex;
-    flex-direction: column;
-    gap: var(--s2);
-    min-width: 0;
-}
-
-.preview-panel-body {
-    /* Inherited from `.dock-body`, which this replaces. The white background is not a
-       surface of this app: css-ui components are drawn for a white document, and theming it
-       would light them wrongly. `position: relative` is the containing block for the loading
-       label that sits over the iframe. */
-    background: #fff;
-    position: relative;
-    /* No height of its own any more: the frame reports what its content needs and sizes itself,
-       so a one-button fixture is compact and a 600px dropdown is whole. Constraining it here was
-       what cut `selection-dropdown` off — the panel was 520px, the frame 150, the document 624. */
-    display: flex;
-    min-width: 0;
-}
-
-/* `.snapshots` is `display: flex; height: 100%` with no width and no `flex` of its own, so as
-   a flex child it sat at its 300px content width inside a 1320px panel — the fixture rendered
-   as a small island top-left. Set here rather than on `.snapshots`, which the split view also
-   uses. */
-.preview-panel-body > * {
-    flex: 1;
     min-width: 0;
 }
 
@@ -550,45 +513,6 @@ input[type='range'] {
     width: 100%;
 }
 
-/* ------------------------------------------------------------ dock/toolbar - */
-
-.toolbar {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
-    padding: 8px 10px;
-}
-
-.toolbar select {
-    font-family: var(--font-sans);
-}
-
-/* Shown while the frame re-parses its stylesheets. Deliberately quiet, and in a
-   corner: it must not cover the component being judged, and it appears on every
-   fixture change, so anything centred would strobe. */
-.dock-loading {
-    position: absolute;
-    bottom: var(--s2);
-    left: var(--s2);
-    z-index: 2;
-    padding: 2px var(--s2);
-    /*
-       A LITERAL ON PURPOSE, and it belongs with `.preview-panel-body`'s `background: #fff`
-       above. This chip sits over the preview iframe, and that iframe is always a white
-       document because css-ui is drawn for one — the backdrop does not change with the mode.
-       So the chip must always be dark to be legible, and a theme token would be exactly
-       wrong: `--foreground` at 82% inverts to near-white in dark mode and the label would
-       vanish into the white page underneath it.
-
-       Tried the token version first and it broke in dark. Recording that here so the next
-       sweep for hardcoded colour does not "fix" it again.
-    */
-    background: rgba(22, 24, 29, 0.82);
-    color: #fff;
-    pointer-events: none;
-}
-
 /* The crash screen. Readable rather than styled — it is the one surface that must
    work when everything else in the app has stopped. */
 .crash {
@@ -606,19 +530,6 @@ input[type='range'] {
     gap: var(--s2);
     margin-top: var(--s4);
     flex-wrap: wrap;
-}
-
-.dock-note {
-    padding: 7px 10px;
-    color: var(--foreground);
-}
-
-/* ----------------------------------------------------------------- misc ---- */
-
-.banner {
-    display: flex;
-    gap: 10px;
-    padding: 10px 12px;
 }
 
 /*
@@ -655,28 +566,6 @@ input[type='range'] {
     flex: none;
 }
 
-/*
-   A knob's three rows. No `margin-bottom` any more: it was 12px of margin stacking on top of
-   whatever gap the parent flex column set, so the space between two fields was the sum of two
-   rules and neither one was the answer. The parent owns the rhythm now — `gap-4` within a
-   group, `gap-8` between groups — which is what makes the grouping legible.
-*/
-.field {
-    display: grid;
-    gap: 4px;
-}
-
-.field > label {
-    display: flex;
-    justify-content: space-between;
-    gap: 8px;
-}
-
-.field .val {
-    font-family: var(--font-mono);
-    color: var(--foreground);
-}
-
 /* Only the box. Its fill, edge, corner, face and ink are utilities on the two `<pre>`s
    that use it — `bg-background border rounded-md font-mono text-xs leading-relaxed
    text-muted-foreground`. */
@@ -685,159 +574,6 @@ pre.code {
     padding: 12px;
     overflow: auto;
     max-height: 420px;
-}
-
-/* ------------------------------------------------------ groups navigator --- */
-/* Mirrors Figma's variables panel: a tree over the token name with inclusive
-   counts, in the collection's own reading order rather than alphabetically. */
-
-.withtree {
-    display: grid;
-    grid-template-columns: 208px minmax(0, 1fr);
-    gap: 16px;
-    align-items: start;
-}
-
-.withtree.tree-collapsed {
-    grid-template-columns: 34px minmax(0, 1fr);
-    gap: 10px;
-}
-
-.withtree-main {
-    min-width: 0;
-}
-
-.grouptree {
-    position: sticky;
-    top: -20px;
-    background: var(--card);
-    padding: 6px 0 4px;
-    max-height: calc(100vh - 90px);
-    overflow-y: auto;
-}
-
-.grouptree-head {
-    padding: 4px 10px 8px;
-}
-
-.grouptree-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--s2);
-    width: 100%;
-    padding: 3px 10px;
-    text-align: left;
-    cursor: pointer;
-    position: relative;
-}
-
-/* `interactive` and `category` each appear under four different parents. At one
-   indent step and one weight, four identical words at four depths is a list you
-   cannot navigate — so depth gets a guide rule, and a nested level steps down in
-   size and ink instead of only moving right. */
-.grouptree-item[data-depth='0'] {
-    color: var(--foreground);
-}
-
-.grouptree-item[data-depth='1']::before,
-.grouptree-item[data-depth='2']::before,
-.grouptree-item[data-depth='3']::before {
-    content: '';
-    position: absolute;
-    left: calc(var(--guide) * 1px);
-    top: 0;
-    bottom: 0;
-    width: 1px;
-    background: var(--border);
-}
-
-.grouptree-item:hover[data-depth]::before,
-.grouptree-item[aria-current='true'][data-depth]::before {
-    background: var(--input);
-}
-
-.grouptree-item:hover {
-    color: var(--foreground);
-}
-
-.grouptree-item[aria-current='true'] {
-    color: var(--foreground);
-}
-
-.grouptree-note {
-    margin: 8px 10px 4px;
-}
-
-/* ------------------------------------------------- collapsible navigation --- */
-/* Both the rail and the Groups tree collapse: on a 3-column shell with a
-   preview dock, the token tables are the first thing to run out of width. */
-
-.grouptree-toggle {
-    flex: 0 0 auto;
-    width: 24px;
-    height: 24px;
-    cursor: pointer;
-}
-
-.grouptree-toggle:hover {
-    color: var(--foreground);
-}
-
-.grouptree.collapsed {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 4px;
-    background: var(--card);
-    position: sticky;
-    top: -20px;
-}
-
-.grouptree-active {
-    writing-mode: vertical-rl;
-    max-height: 220px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    padding: 6px 3px;
-    color: var(--foreground);
-    cursor: pointer;
-}
-
-.grouptree-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.tok-name {
-    color: var(--foreground);
-}
-
-.tok-var {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-}
-
-/* Inline beside the name, and on a SPAN. This was `display: flex` on a `<td>`,
-   which stops a cell behaving like a cell: it loses `vertical-align`, its height
-   collapses to its content, and its bottom border draws across the middle of the
-   row instead of at the row's edge. Never lay out a table cell with flex. */
-.tok-notes {
-    display: inline-flex;
-    gap: var(--s1);
-    align-items: center;
-    margin-left: 7px;
-    vertical-align: 1px;
-}
-
-.tok-static {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
 }
 
 /* ---------------------------------------------------------------- the dock --- */
@@ -1115,6 +851,32 @@ p.lede {
     transform: translateY(-2px);
 }
 
+/*
+   A focus ring that survives all 66 backgrounds, which needs TWO tones.
+
+   The swatch is the app's primary control and had no focus treatment at all — it carries a
+   hover ring and a pressed ring and nothing for the keyboard, so tabbing the wall fell
+   through to the base `*:focus-visible` outline. One grey ring cannot work here: the thing
+   it has to be visible against is 66 arbitrary colours, which is the same problem
+   `.swatch-rung` solves with opacity and `prefersDarkInk` solves by measurement.
+
+   So `--background` immediately outside the tile, then `--foreground` outside that. One of
+   the two always contrasts with the swatch, and the pair always contrasts with each other,
+   whatever the rung. `outline: none` because the box-shadow IS the indicator, and the base
+   rule's outline would otherwise sit outside both rings at a third tone.
+
+   4px total against hover's 2px, so focus and hover are not the same mark. The lift is
+   shared with hover deliberately: a focused swatch is one you are about to open.
+*/
+.wall .swatch:focus-visible {
+    outline: none;
+    transform: translateY(-2px);
+    box-shadow:
+        0 0 0 2px var(--background),
+        0 0 0 4px var(--foreground),
+        var(--shadow-lg);
+}
+
 .wall-family {
     padding-right: var(--s2);
 }
@@ -1193,151 +955,6 @@ p.lede {
     border-bottom-color: var(--muted-foreground);
 }
 
-/* ----------------------------------------------------- component picker --- */
-/* A flat row of the eleven components, not a tree. You do not navigate to a
-   button, you point at one — and the preview beside the table is already
-   showing it. Variants go back to being section headings inside the component,
-   which is what they are. */
-
-.withtree.no-tree {
-    grid-template-columns: minmax(0, 1fr);
-}
-
-/* ------------------------------------------------------------- burndown --- */
-/* The one number this screen is about, so it gets the largest type on it. */
-
-.burndown-figures {
-    display: flex;
-    align-items: flex-end;
-    gap: var(--s5);
-    margin-bottom: var(--s4);
-}
-
-.burndown-figures dd {
-    margin: var(--s1) 0 0;
-}
-
-.burndown-arrow {
-    padding-bottom: 2px;
-}
-
-.burndown-done dd em {
-    font: 400 var(--text-sm) var(--font-sans);
-    margin-left: var(--s1);
-}
-
-/* This session's decisions, alongside what the branch has landed. Numbers rather
-   than a bare colour, because "decided but not yet written" is a different claim
-   from "removed" and the difference matters when you are sizing what is left. */
-
-.burndown-planned dd em {
-    font: 400 var(--text-sm) var(--font-sans);
-    margin-left: var(--s1);
-}
-
-.burndown-bar {
-    display: flex;
-    height: 8px;
-    overflow: hidden;
-}
-
-.burndown-bar span {
-    display: block;
-    height: 100%;
-    transition: width var(--base) var(--ease);
-}
-
-/* Hatched, not merely a second hue: it is a claim about intent rather than about
-   the compiled CSS, and the two must not read as the same kind of fact.
-   `min-width` because one decision out of 521 is 0.4% — under a pixel, so the bar
-   would show nothing at all for work that was genuinely done. */
-.burndown-bar span.planned {
-    min-width: 3px;
-    background: repeating-linear-gradient(
-        135deg,
-        var(--primary),
-        var(--primary) 3px,
-        var(--primary) 3px,
-        var(--primary) 6px
-    );
-}
-
-/* --------------------------------------------------------- site listing --- */
-
-/*
-   A left edge that says "this listing belongs to the row above" is structure, and
-   structure is how content gets grouped here. A left edge in `--primary` is the
-   interactive colour tinting static content, which is not — so it is the theme's border
-   at a hairline, and it groups without claiming to be clickable. Same for
-   `.migedit-sites` and `.insp-scope`.
-*/
-.sitelist {
-    padding: var(--s3);
-}
-
-.sitelist-token {
-    margin-bottom: var(--s3);
-}
-
-.sitelist-token:last-child {
-    margin-bottom: 0;
-}
-
-.sitelist-head {
-    display: flex;
-    align-items: baseline;
-    gap: var(--s2);
-    margin-bottom: var(--s1);
-}
-
-.sitelist-head code {
-    color: var(--foreground);
-}
-
-.sitelist-row {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--s3);
-    padding: 2px 0 2px var(--s3);
-}
-
-.sitelist-row code {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.sitelist-row a {
-    flex: 0 0 auto;
-}
-
-/* ------------------------------------------------------- snapshot frames --- */
-/* Both refs stay mounted so switching is instant and the scroll position
-   survives; the inactive one is hidden with visibility, not display. */
-
-.snapshots {
-    position: relative;
-    height: 100%;
-    display: flex;
-}
-
-.snapshot-pane {
-    position: relative;
-    flex: 1;
-    min-width: 0;
-    height: 100%;
-}
-
-.snapshot-tag {
-    position: absolute;
-    top: 0;
-    left: 0;
-    z-index: 2;
-    padding: 2px var(--s2);
-    border-bottom-right-radius: var(--radius-sm);
-}
-
 kbd {
     display: inline-block;
     padding: 0 4px;
@@ -1375,22 +992,6 @@ kbd {
     outline-offset: -2px;
 }
 
-.flip-swatches {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-}
-
-.flip-swatches span {
-    width: 22px;
-    height: 22px;
-    border: 1px solid color-mix(in srgb, var(--foreground) 14%, transparent);
-}
-
-.flip-ratio {
-    white-space: nowrap;
-}
-
 /* A rejection is not a confirmation: it needs to read as a refusal, and to hold
    still long enough to be read. */
 /* A rejection is prose rather than a word, so it gets a measure and more room. Its fill,
@@ -1398,26 +999,6 @@ kbd {
 .toast.reject {
     max-width: 60ch;
     padding: var(--s3) var(--s4);
-}
-
-/* State is a shape first. The ink only reinforces it. */
-.comppick-mark {
-    width: 10px;
-    flex: none;
-}
-
-/* No negative top margin.
-
-   It used to be `calc(var(--s4) * -1 + var(--s1))`, cancelling most of the workspace's
-   24px gap so the note sat tight under the picker it belongs to. That only worked while
-   the picker was a direct child of `.workspace`; once it moved into a row of its own —
-   the trigger plus the Preview toggle — there was no gap left to cancel and the note
-   was pulled up ON TOP of the trigger. The row owns the spacing now. */
-/* An `Alert` now; only the measure and the rhythm above it are left, because a line
-   length is a reading decision and the component has no opinion about it. */
-.comppick-note {
-    margin: var(--s2) 0 0;
-    max-width: 68ch;
 }
 
 /* --------------------------------------------------------- page headings ---- */
@@ -1500,97 +1081,6 @@ button.status-group {
     }
 }
 
-/* -------------------------------------------------------- migration editor --- */
-
-/* Framed, because it is a different KIND of work from the rows below it: those
-   edit tokens in this app, these propose edits to the design system's source. */
-.migedit {
-    margin: 0 0 var(--s5);
-    padding: var(--s4) var(--s5) var(--s5);
-    border-left: 3px solid var(--foreground);
-    background: var(--card);
-}
-
-.migedit-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--s5);
-    margin-bottom: var(--s4);
-}
-
-.migedit-head h2 {
-    margin: 0 0 var(--s2);
-    color: var(--foreground);
-}
-
-.migedit-lede {
-    margin: 0;
-    max-width: 66ch;
-}
-
-.migedit-lede em {
-    color: var(--foreground);
-}
-
-.migedit-progress {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: var(--s1);
-    flex: none;
-}
-
-/* The one number this panel is about. */
-.migedit-count {
-    font-variant-numeric: tabular-nums;
-    color: var(--foreground);
-}
-
-.migedit-tbl {
-    margin-top: var(--s2);
-}
-
-.migedit-ref {
-    display: flex;
-    align-items: center;
-    gap: var(--s3);
-    min-width: 0;
-}
-
-/* Big enough to judge a hue against, which is the whole reason it is here. */
-.migedit-swatch {
-    width: 30px;
-    height: 30px;
-    flex: none;
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--foreground) 14%, transparent);
-}
-
-/* `min-width: 0` on the grid AND on its children: without it a long selector in
-   a `pre` establishes the track width and the whole expansion pushes past the
-   table it belongs to. A checkbox selector in css-ui is 200 characters. */
-.migedit-sites {
-    padding: var(--s2) 0 var(--s3) var(--s4);
-    margin: 0 var(--s4) var(--s2) var(--s3);
-    display: grid;
-    gap: 3px;
-    min-width: 0;
-}
-
-.migedit-sites > * {
-    min-width: 0;
-}
-
-.migedit-site {
-    display: flex;
-    gap: var(--s3);
-    align-items: baseline;
-}
-
-.migedit-site a {
-    white-space: nowrap;
-}
-
 /* --------------------------------------------------- edit scope (inspector) --- */
 
 /* The scope switch and its consequence, stacked: the control, then a sentence
@@ -1608,51 +1098,6 @@ button.status-group {
 
 .insp-scope-note b {
     color: var(--foreground);
-}
-
-/* ------------------------------------------------ per-component exception --- */
-
-.migedit-except {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    cursor: pointer;
-    white-space: nowrap;
-}
-
-.migedit-except input {
-    margin: 0;
-}
-
-/* The variable name inside the label keeps its mono voice, so the label reads as
-   "this switch is about THOSE tokens" rather than as prose. */
-.migedit-except code {
-    color: var(--foreground);
-}
-
-/* An escape hatch has to look like one: stated, not tucked away. The app flags
-   this exact shape as a defect elsewhere (the ⤳ mark), so when it is deliberate
-   the reason has to be on screen next to the switch that caused it. */
-.migedit-except-note {
-    margin: var(--s3) 0 0;
-    max-width: 66ch;
-}
-
-.migedit-name {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 5px;
-}
-
-.migedit-name span {
-    white-space: nowrap;
-}
-
-.migedit-name input {
-    flex: 1;
-    min-width: 0;
-    padding: 3px 6px;
 }
 
 /* ------------------------------------------------------- palette actions ---- */
@@ -1791,25 +1236,6 @@ button.status-group {
     opacity: 1;
 }
 
-/* --------------------------------------------- pointing at a call site ------ */
-
-.migedit-row {
-    cursor: pointer;
-}
-
-/* The selected row and the outline in the preview are the same colour, deliberately:
-   they are two halves of one statement about the same elements. It used to also carry
-   `inset 2px 0 0 var(--primary)` on the first cell — a coloured left edge on an active
-   row, which is not done here. The fill says it on its own. */
-
-.migedit-found {
-    margin-top: 5px;
-}
-
-.migedit-found .warn {
-    color: var(--foreground);
-}
-
 /* The rung control lives in the row it changes: one family's depth is its own. */
 .rung-add {
     display: flex;
@@ -1854,371 +1280,6 @@ button.status-group {
 
 .insp-close:hover {
     color: var(--foreground);
-}
-
-/* A non-colour token's identity is its UNIT, so that is what sits where the
-   swatch would be. A grey circle next to `36px` would be a lie about the value. */
-.unit-tag {
-    flex: none;
-    padding: 1px 5px;
-    white-space: nowrap;
-}
-
-/* Copy and Reset sit together under the count they act on, and wrap rather than
-   widening the header when the confirm replaces one of them. */
-.migedit-acts {
-    display: flex;
-    align-items: center;
-    gap: var(--s2);
-    flex-wrap: wrap;
-    justify-content: flex-end;
-}
-
-/* Provenance of what the preview is showing. `story` is the design system's own
-   markup; `hand-written` is this app's. The distinction matters because a story's
-   placeholder content makes a real component look fabricated. */
-.fx-origin {
-    flex: none;
-    padding: 1px 5px;
-    white-space: nowrap;
-}
-
-/* `data-origin='story'` used to tint this chip's border with `--primary`. It is
-   `[&[data-origin=story]]:border-primary` at the call site now. */
-
-/* The source, quoted. Two lines when a decision is made: what the file says now,
-   struck through, and what it would say. */
-.migedit-site-block {
-    margin-bottom: var(--s2);
-}
-
-.migedit-css {
-    margin: 3px 0 0;
-    min-width: 0;
-    max-width: 100%;
-    padding: var(--s2) var(--s3);
-    white-space: pre-wrap;
-    word-break: break-word;
-    overflow-x: auto;
-}
-
-/* ------------------------------------------------------------- css lens ---- */
-/* Reading a component's whole compiled stylesheet, to confirm it is finished.
-   Monospace and dense on purpose: this is source, and the eye is scanning for one
-   thing — a `--ref-color-*` that is not `v3`. */
-
-.csslens-head {
-    display: flex;
-    align-items: center;
-    gap: var(--s2);
-}
-
-.csslens-ref {
-    margin-left: auto;
-}
-
-.csslens-lede {
-    margin: var(--s3) 0;
-    max-width: 74ch;
-}
-
-.csslens-controls {
-    display: flex;
-    align-items: center;
-    gap: var(--s2);
-    margin-bottom: var(--s3);
-}
-
-.csslens-names {
-    margin: 0 0 var(--s3);
-}
-
-.csslens-names code {
-    margin-right: var(--s2);
-}
-
-/* Scrolls inside its own box: 98 rules is 12 kB of text, and the page must not
-   become a mile long because a panel was expanded. */
-.csslens-rules {
-    max-height: 420px;
-    overflow: auto;
-}
-
-.csslens-rule {
-    padding: var(--s2) var(--s3);
-    min-width: 0;
-}
-
-.csslens-sel {
-    word-break: break-all;
-}
-
-/* 13px, on a 28px line.
-
-   The body was 11px while the pickers sitting in it are ~28px tall, so the code read as
-   small print around its own controls — and only the lines carrying a slot grew, so the
-   block lost its rhythm line by line. `line-height: 28px` is the slot's height, which
-   makes every line the same height whether it holds a control or not. */
-.csslens-body {
-    margin: var(--s1) 0 0;
-    white-space: pre-wrap;
-    word-break: break-word;
-}
-
-/* A `var()` you can operate, inline in the code.
-
-   `.csslens-raw` used to `<mark>` the V2 names here — a highlight that said "this is debt"
-   and left you to find the matching row in the table above to act on it. These slots hold a
-   real picker instead, so they have to read as part of the declaration while still looking
-   operable: `inline-flex` and `baseline` keep them sitting on the code's own line rather
-   than pushing it around, and the trigger inside is sized down to the body's 11px. */
-.csslens-slot {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 4px;
-    vertical-align: baseline;
-}
-
-.csslens-slot button {
-    height: auto;
-    min-height: 0;
-    padding: 0 4px;
-}
-
-/* The chosen token, after the arrow. `--ok` because a decided call site is the good
-   state here, and it is the only green on a screen otherwise reporting debt. */
-.csslens-becomes {
-    white-space: nowrap;
-}
-
-/* A V3 shade or a non-colour ref: shown, not offered. Dimmer than the code around it so
-   it does not read as something that failed to become a control. */
-
-/* The file a decision edits, in the row. Stacked because the chip is a claim about
-   scope and wants its own line rather than competing with the path. */
-.migedit-edit {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-    min-width: 0;
-}
-
-/* The line list and the CSS control on one row.
-
-   `.migedit-edit` is a column, so a button appended to it landed on its own line and cost
-   14px of row height — measured 86px before, 100px after. The button reveals exactly those
-   lines, so it sits beside them and the row goes back to one line per fact. */
-.migedit-edit-lines {
-    display: flex;
-    align-items: center;
-    gap: var(--s2);
-    flex-wrap: wrap;
-    min-width: 0;
-}
-
-.workfile-controls {
-    display: flex;
-    align-items: center;
-    gap: var(--s2);
-    margin-bottom: var(--s3);
-}
-
-.workfile-path {
-    word-break: break-all;
-}
-
-.workfile-decision {
-    padding: var(--s2) var(--s3);
-}
-
-.workfile-decision-head {
-    display: flex;
-    align-items: center;
-    gap: var(--s2);
-    flex-wrap: wrap;
-}
-
-/* The components one decision reaches. Buttons, because each one is the way to go
-   and judge it against something you can actually look at. */
-.workfile-decision-comps {
-    display: flex;
-    gap: var(--s2);
-    flex-wrap: wrap;
-    margin-top: var(--s1);
-}
-
-.workfile-decision-lines {
-    display: flex;
-    gap: var(--s2);
-    margin-top: var(--s1);
-}
-
-/* The invisible-swap batch. Accented rather than warned: it is the one action here
-   that is safe by construction, and it should read that way. */
-.workfile-batch {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--s3);
-    padding: var(--s2) var(--s3);
-    margin-bottom: var(--s3);
-    color: var(--foreground);
-}
-
-/* ------------------------------------------------------- snapshot status ---- */
-
-/*
- * Anchored above the status bar rather than inside it: the bar is 11px tall text on one
- * line, and the freshness answer is a table plus a command log. Fixed positioning keeps
- * it off the grid, so opening it cannot push the workspace sideways — the defect that
- * made every candidate picker in this app shift the layout under the cursor.
- */
-.snapshot-pop {
-    position: fixed;
-    right: 12px;
-    bottom: 34px;
-    z-index: 40;
-    width: min(560px, calc(100vw - 24px));
-    padding: var(--s3);
-    background: var(--card);
-}
-
-.snapshot-pop-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: var(--s2);
-}
-
-.snapshot-refs {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: var(--s2);
-}
-
-.snapshot-refs th {
-    text-align: left;
-    padding: 2px 8px 2px 0;
-    white-space: nowrap;
-}
-
-.snapshot-refs td {
-    padding: 2px 8px 2px 0;
-    vertical-align: baseline;
-    /* `3 behind -> 6d3ae6b` is one fact and wrapped mid-arrow, putting the target commit
-       on the line below under a different column. The subject cell overrides this. */
-    white-space: nowrap;
-}
-
-/* The commit subject is the one thing here that has no length limit. It gets the
-   remaining width and an ellipsis, with the full text in `title`. */
-.snapshot-subject {
-    max-width: 0;
-    width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.snapshot-detail {
-    margin: 0 0 var(--s2);
-}
-
-.snapshot-failed {
-    margin: var(--s2) 0 0;
-    padding: 6px 8px;
-    border: 1px solid color-mix(in srgb, var(--destructive) 45%, transparent);
-    background: color-mix(in srgb, var(--destructive) 12%, transparent);
-    color: var(--foreground);
-}
-
-.snapshot-log {
-    margin: var(--s2) 0 0;
-    max-height: 220px;
-    overflow: auto;
-    padding: 8px;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-}
-
-/* ------------------------------------------------------------ decision strip ---- */
-
-/*
- * Sits between the preview toolbar and the frame, only while a migration row is
- * selected. It carries the one comparison the dock existed to make and never showed:
- * the colour the call site paints today next to the colour the chosen token resolves to.
- */
-.decision-strip {
-    flex: 0 0 auto;
-    padding: var(--s2) var(--s3);
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.decision-strip-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--s2);
-}
-
-.decision-title {
-    color: var(--foreground);
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.decision-state {
-    margin-left: 6px;
-    padding: 0 6px;
-    background: var(--card);
-    white-space: nowrap;
-}
-
-.decision-baw {
-    display: flex;
-    align-items: center;
-    gap: var(--s2);
-    flex-wrap: wrap;
-}
-
-.decision-half {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    min-width: 0;
-}
-
-.decision-cap {
-    max-width: 160px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-/* A visible chip of colour, or a checker that reads unmistakably as "no colour". */
-.decision-swatch {
-    width: 18px;
-    height: 18px;
-    flex: 0 0 auto;
-}
-
-.decision-swatch-empty,
-.decision-swatch:not([style]) {
-    background-image:
-        linear-gradient(45deg, var(--border) 25%, transparent 25%),
-        linear-gradient(-45deg, var(--border) 25%, transparent 25%),
-        linear-gradient(45deg, transparent 75%, var(--border) 75%),
-        linear-gradient(-45deg, transparent 75%, var(--border) 75%);
-    background-size: 8px 8px;
-    background-position:
-        0 0,
-        0 4px,
-        4px -4px,
-        -4px 0;
 }
 
 /* --------------------------------------------------- figma reference wall ---- */

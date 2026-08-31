@@ -59,7 +59,7 @@ export function Chip({
         <Badge
             variant="outline"
             className={cn(
-                'h-[18px] shrink-0 px-1.5 text-[10px] font-medium tabular-nums',
+                'h-5 shrink-0 px-1.5 text-xs font-medium tabular-nums',
                 TONE[tone],
                 className,
             )}

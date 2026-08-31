@@ -20,7 +20,7 @@
  *                        is the one fact you want visible while dragging an anchor.
  */
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Monitor, Moon, Sun } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -91,7 +91,7 @@ export function App() {
                 <header className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                         <div className="text-sm font-semibold">Agorapulse Palette</div>
-                        <div className="text-muted-foreground text-[11px]">
+                        <div className="text-muted-foreground text-xs">
                             Five anchors, 66 shades, solved
                         </div>
                     </div>
@@ -122,11 +122,16 @@ function RestoreNotice() {
     const restored = useStore((s) => s.restored);
     const dismiss = useStore((s) => s.dismissRestored);
     const resetPalette = useStore((s) => s.resetPalette);
+    const [confirming, setConfirming] = useState(false);
     if (!restored) return null;
 
     return (
         <div
-            className="restore-note bg-muted rounded-md border text-xs leading-normal"
+            /* `text-sm`, not `text-xs`. This is prose — two sentences explaining what a
+               reload just did to your work — and 12px is the app's scale for dense tabular
+               read-outs, not for something you read once and have to understand. The status
+               bar beside it stays at 12px because that IS dense data. */
+            className="restore-note bg-muted rounded-md border text-sm leading-normal"
             role="status"
         >
             <div>
@@ -140,13 +145,64 @@ function RestoreNotice() {
                     </>
                 )}
             </div>
+            {/*
+               `Discard it` confirms, and that is not politeness.
+
+               This was `Start fresh` calling `resetPalette()` on ONE click, sitting immediately
+               beside `Got it` in the same button group — so the friendliest word on the notice was
+               also its only destructive one, one misclick away from the button you actually want.
+               And the thing it discards is the entire work product: this tool authors exactly one
+               artefact, so "the palette" and "everything you have done" are the same set.
+
+               The notice has just finished telling you your palette was restored. Throwing it away
+               without a question, from that sentence, is the wrong pairing. `Reset palette` on the
+               wall above already confirms with a count; this now matches it.
+            */}
             <span className="restore-actions">
-                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={resetPalette}>
-                    Start fresh
-                </Button>
-                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={dismiss}>
-                    Got it
-                </Button>
+                {confirming ? (
+                    <>
+                        <span className="text-muted-foreground">
+                            Discard your palette and go back to the shipped one?
+                        </span>
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => {
+                                resetPalette();
+                                setConfirming(false);
+                            }}
+                        >
+                            Discard
+                        </Button>
+                        <Button
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => setConfirming(false)}
+                        >
+                            Keep
+                        </Button>
+                    </>
+                ) : (
+                    <>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => setConfirming(true)}
+                        >
+                            Discard it
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={dismiss}
+                        >
+                            Got it
+                        </Button>
+                    </>
+                )}
             </span>
         </div>
     );
