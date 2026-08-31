@@ -252,8 +252,8 @@ function PaletteActions() {
     // would leave this disabled after the first edit until something else
     // happened to re-render. It returns a number, so there is no identity churn.
     //
-    // The PALETTE count, not the session count: this button does not touch the
-    // migration plan, so counting decisions here would overstate what it discards.
+    // A count of PALETTES, not of edits: forty slider moves are one authored palette, and
+    // "Discard 40 edits?" read as a threat to forty things.
     const edits = useStore(paletteEditCount);
     const dirty = edits > 0;
 
@@ -311,9 +311,7 @@ function PaletteActions() {
                             onClick={() => {
                                 resetPalette();
                                 setConfirming(false);
-                                say(
-                                    'Back to the shipped palette — the migration plan is untouched',
-                                );
+                                say('Back to the shipped palette');
                             }}
                         >
                             Reset

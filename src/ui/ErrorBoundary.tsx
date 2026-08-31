@@ -4,7 +4,7 @@
  * A throw anywhere under `<App />` used to unmount the tree and leave a blank
  * white page with the message in the console — indistinguishable from a dead dev
  * server. That was survivable while the app forgot everything on reload anyway;
- * it is not now that a session holds a migration plan, because the natural
+ * it is not now that a session holds an authored palette, because the natural
  * reaction to a blank page is to close the tab.
  *
  * So it says what broke, and it says the work is still saved — then offers the
@@ -40,8 +40,8 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
             <div className="crash text-sm leading-relaxed [&_h1]:text-xl" role="alert">
                 <h1>Color Lab hit an error</h1>
                 <p>
-                    Your session is saved. Reloading brings back the palette, the repointed tokens
-                    and the migration plan — it does not start over.
+                    Your session is saved. Reloading brings back the palette, the repointed tokens —
+                    it does not start over.
                 </p>
                 <pre className="code bg-background text-muted-foreground rounded-md border font-mono text-xs leading-relaxed">
                     {error.message}

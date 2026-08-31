@@ -288,6 +288,22 @@ export function RungInspector({ family, rung }: { family: string; rung: number }
     const step = ladderIndex >= 4 ? solution.derived.lowStep : solution.derived.highStep;
     const deltaL = draftOklch && ladderL !== undefined ? draftOklch.L - ladderL : null;
 
+    /*
+       One status line, four possible messages, in priority order: what is wrong, then how far
+       the value is bent, then that it is on the ladder. Computed here rather than inline so the
+       `title` and the text cannot drift apart.
+    */
+    const statusLine = (() => {
+        if (!inGamut(lch.L, lch.C, lch.H)) return 'Outside sRGB — the hex is clamped.';
+        if (isAnchor) return 'An anchor: the ladder is derived from it.';
+        if (deltaL !== null && Math.abs(deltaL) > 0.0002) {
+            const dir = deltaL > 0 ? 'lighter' : 'darker';
+            const pct = Math.abs((deltaL / step) * 100).toFixed(0);
+            return `${Math.abs(deltaL).toFixed(4)} ${dir} than the ladder — ${pct}% of a step`;
+        }
+        return 'On the ladder.';
+    })();
+
     const on = (other: number) => {
         const o = solution.rungs.get(rungRef(family, other));
         return o ? contrastHex(solved.hex, o.hex) : null;
@@ -610,14 +626,24 @@ export function RungInspector({ family, rung }: { family: string; rung: number }
                    "On the ladder" is also better than silence, which used to mean both "no
                    override" and "too small to mention".
                 */}
-                <p className="insp-delta text-xs">
-                    {!inGamut(lch.L, lch.C, lch.H)
-                        ? 'Outside sRGB — the hex is the clamped colour, not what the sliders say.'
-                        : isAnchor
-                          ? 'This shade is an anchor, so the ladder is derived from it.'
-                          : deltaL !== null && Math.abs(deltaL) > 0.0002
-                            ? `${Math.abs(deltaL).toFixed(4)} ${deltaL > 0 ? 'lighter' : 'darker'} than the ladder — ${Math.abs((deltaL / step) * 100).toFixed(0)}% of a step`
-                            : 'On the ladder.'}
+                {/*
+                   `truncate` is the guard, and it is why this line can never move the panel
+                   again.
+
+                   Making the slot always render was only half the fix. Its four messages have
+                   very different lengths — "Outside sRGB…" is about 68 characters against the
+                   delta sentence's 45 — so in a 470px panel the gamut branch WRAPPED TO TWO
+                   LINES, and dragging chroma past the sRGB boundary grew the fold by a row.
+                   Near the bottom of the wall the panel is anchored by its bottom edge
+                   (`.swatch-pop[data-flip]`), so that row moved everything under the cursor.
+
+                   Clipping rather than wrapping makes the height independent of the wording,
+                   which is the property worth having: the next message somebody adds here
+                   cannot reintroduce the bug. The messages are also kept short enough that
+                   nothing clips in practice — `title` carries the full text either way.
+                */}
+                <p className="insp-delta truncate text-xs" title={statusLine}>
+                    {statusLine}
                 </p>
 
                 {!isAnchor && (

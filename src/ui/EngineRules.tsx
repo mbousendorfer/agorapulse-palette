@@ -42,6 +42,7 @@ import { Chip } from './Chip';
 
 import { hexToOklch, normaliseHex } from '../color/oklab';
 import { evaluateConstraints } from '../engine/constraints';
+import { anchorReach } from '../engine/reach';
 import { useResetOn } from './useDerived';
 import { paletteEditCount, useStore } from '../state/store';
 
@@ -49,6 +50,16 @@ export function EngineRules() {
     const spec = useStore((s) => s.spec);
     const solution = useStore((s) => s.solution);
     const updateSpec = useStore((s) => s.updateSpec);
+
+    /*
+       Ten solves, memoised on the spec.
+
+       `anchorReach` nudges each of the five anchors both ways and re-solves — 3.3 ms a solve, so
+       ~33 ms when the spec changes and nothing while it does not. That is affordable HERE and
+       nowhere near the wall: this fold is closed by default and re-renders on a committed edit,
+       not on a pointer move.
+    */
+    const reach = useMemo(() => anchorReach(spec), [spec]);
 
     // Memoised: ~30 contrastHex calls, and the panel re-renders on every palette edit.
     const constraints = useMemo(() => evaluateConstraints(spec, solution), [spec, solution]);
@@ -82,14 +93,16 @@ export function EngineRules() {
             <div className="fold-body">
                 <Card>
                     <CardContent className="flex flex-col gap-8 pt-6">
-                        <div className="flex flex-col gap-4">
+                        <div className="flex flex-col gap-3">
                             <h3 className="text-foreground text-xs font-semibold">
                                 The five anchors
                             </h3>
                             <p className="text-muted-foreground max-w-prose text-xs">
-                                Every other shade is derived. Moving one of these re-solves the
-                                whole palette — the three brand anchors reach 35, 37 and 49 of the
-                                66 rungs.
+                                Every other shade is derived from these. The figure on each row is
+                                measured, not remembered: it is how many of the{' '}
+                                {solution.rungs.size} shades change hex when that anchor's lightness
+                                moves by 0.01 — so it answers what you will see move, rather than
+                                what structurally depends on it.
                             </p>
                             {spec.chromatic.families
                                 .filter((f) => Object.keys(f.anchors).length > 0)
@@ -99,6 +112,7 @@ export function EngineRules() {
                                             key={`${family.id}.${rung}`}
                                             label={`${family.label} ${rung}`}
                                             hex={hex as string}
+                                            moves={reach.get(`${family.id}.${rung}`)}
                                             onChange={(next) =>
                                                 updateSpec((draft) => {
                                                     const f = draft.chromatic.families.find(
@@ -113,6 +127,7 @@ export function EngineRules() {
                             <AnchorField
                                 label="Grey 100"
                                 hex={spec.grey.anchor100}
+                                moves={reach.get('grey.100')}
                                 onChange={(next) =>
                                     updateSpec((x) => void (x.grey.anchor100 = next))
                                 }
@@ -120,6 +135,7 @@ export function EngineRules() {
                             <AnchorField
                                 label="Grey 1000"
                                 hex={spec.grey.anchor1000}
+                                moves={reach.get('grey.1000')}
                                 onChange={(next) =>
                                     updateSpec((x) => void (x.grey.anchor1000 = next))
                                 }
@@ -205,12 +221,9 @@ export function EngineRules() {
                             </p>
                         </div>
 
-                        {/* Reachable whenever the panel is open. It discards the migration plan
-                            as well as the palette, so it must not hide behind a fold of its own.
-
-                            `self-start` because the parent is a flex column, whose default
-                            `align-items: stretch` had this button spanning the whole card. A CTA
-                            is auto-width here; a full-width destructive button reads as a banner. */}
+                        {/* Reachable whenever the panel is open — the one destructive control
+                            on the page, so it sits at the bottom of the fold rather than beside
+                            the wall. */}
                         <div className="self-start">
                             <ResetEverything />
                         </div>
@@ -282,13 +295,39 @@ function ResetEverything() {
     );
 }
 
+/**
+ * One anchor: a swatch you can open, the hex you can type, what it reads in OKLCH, and how much
+ * of the palette a nudge to it moves.
+ *
+ * ## What was wrong with the row before
+ *
+ * `.field > label` is `justify-content: space-between`, and this row filled the card — so the
+ * OKLCH read-out was flung to the far right edge, roughly 1800px from the field it describes,
+ * across nothing. Measured on screen: the input ended at 215px and `L 0.6440 · C 0.193 · h
+ * 253.5°` started at 1670px.
+ *
+ * There were also TWO swatches per row showing the same colour — a 22px rounded `.dot` and a
+ * 34px rectangular `input[type=color]`, in different shapes, one inert and one operable. The
+ * native input is the one that does something, so it is the only one now, sized to read as a
+ * swatch rather than as a browser widget.
+ *
+ * The row is constrained instead of centred or stretched: everything sits in one line at its
+ * natural width, so the eye travels from the colour to its value to what moving it costs.
+ */
 function AnchorField({
     label,
     hex,
+    moves,
     onChange,
 }: {
     label: string;
     hex: string;
+    /**
+     * Shades whose hex changes when this anchor's lightness moves by 0.01, from
+     * `engine/reach.ts`. `null` when the nudge cannot solve in either direction — near a
+     * binding constraint that is a real answer, so it is said rather than shown as zero.
+     */
+    moves?: number | null;
     onChange: (hex: string) => void;
 }) {
     /*
@@ -339,41 +378,66 @@ function AnchorField({
     })();
 
     return (
-        <div className="field [&>label]:text-xs [&>label]:text-muted-foreground">
-            <label>
-                {label}
-                {o && (
-                    <span className="val text-muted-foreground">
-                        L {o.L.toFixed(4)} · C {o.C.toFixed(3)} · h {o.H.toFixed(1)}°
-                    </span>
-                )}
-            </label>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            {/*
+               The colour picker IS the swatch. `appearance-none` plus a fixed box turns the
+               native control into a plain square — without it browsers draw their own inset
+               border and padding, which is what made the old row need a second, tidier swatch
+               beside it.
+            */}
+            <input
+                type="color"
+                value={hex}
+                aria-label={`${label} colour picker`}
+                title={`${label} — ${hex}`}
+                className="border-input size-7 shrink-0 cursor-pointer appearance-none rounded-md border bg-transparent p-0 [&::-moz-color-swatch]:rounded-[3px] [&::-moz-color-swatch]:border-0 [&::-webkit-color-swatch]:rounded-[3px] [&::-webkit-color-swatch]:border-0 [&::-webkit-color-swatch-wrapper]:p-0"
+                onFocus={() => setDragging(true)}
+                onBlur={() => setDragging(false)}
+                onChange={(e) => {
+                    setDraft(e.target.value);
+                    commit(e.target.value);
+                }}
+            />
+            <span className="w-32 shrink-0 text-xs">{label}</span>
+            <Input
+                type="text"
+                value={draft}
+                spellCheck={false}
+                aria-label={`${label} hex`}
+                className="w-28 shrink-0 font-mono !text-xs"
+                onChange={(e) => setDraft(e.target.value)}
+                onBlur={(e) => commit(e.currentTarget.value)}
+                onKeyDown={(e) => e.key === 'Enter' && commit(e.currentTarget.value)}
+            />
+            {/* Next to the value, not at the far edge of the card. */}
+            {o && (
+                <span className="text-muted-foreground shrink-0 font-mono text-[11px] tabular-nums">
+                    L {o.L.toFixed(4)} · C {o.C.toFixed(3)} · h {o.H.toFixed(1)}°
+                </span>
+            )}
+            {/*
+               The number that makes the row actionable, and the one the panel's prose used to
+               carry for only three of the five anchors without saying which was which.
+            */}
+            {moves !== undefined && (
                 <span
-                    className="dot rounded-sm"
-                    style={{ background: hex, width: 22, height: 22 }}
-                />
-                <Input
-                    type="text"
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    onBlur={(e) => commit(e.currentTarget.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && commit(e.currentTarget.value)}
-                    style={{ width: 100 }}
-                />
-                <input
-                    type="color"
-                    value={hex}
-                    onFocus={() => setDragging(true)}
-                    onBlur={() => setDragging(false)}
-                    onChange={(e) => {
-                        setDraft(e.target.value);
-                        commit(e.target.value);
-                    }}
-                    style={{ width: 34, height: 26, padding: 0, border: 0, background: 'none' }}
-                />
-                {error && <Chip tone="bad">{error}</Chip>}
-            </div>
+                    className="text-muted-foreground shrink-0 text-[11px] tabular-nums"
+                    title={
+                        moves === null
+                            ? 'A 0.01 nudge does not solve in either direction from here — this anchor sits against a constraint'
+                            : `Nudging this anchor by 0.01 in lightness changes the hex of ${moves} shades`
+                    }
+                >
+                    {moves === null ? (
+                        <span className="text-foreground">at a constraint edge</span>
+                    ) : (
+                        <>
+                            moves <span className="text-foreground">{moves}</span>
+                        </>
+                    )}
+                </span>
+            )}
+            {error && <Chip tone="bad">{error}</Chip>}
         </div>
     );
 }
