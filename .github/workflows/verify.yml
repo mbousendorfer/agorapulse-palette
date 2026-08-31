@@ -1,0 +1,78 @@
+name: Verify
+
+# `verify` proves the engine still reproduces the palette the design system ships.
+# `pages` builds the tool and publishes it, on every push to main.
+#
+# This repository CAN be published, and that is a property of how it was created rather
+# than of a setting: it was started with a fresh `git init`, so the five Averta `.otf`
+# blobs that are live in `agorapulse-color-lab`'s history never entered this one. What
+# does go out is `vendor/` — the design-token snapshot and the Figma variable export —
+# which `LICENSE` inventories.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # `npm run verify` chains seven checks, all offline, each failing the job:
+      #   typecheck    — src AND scripts
+      #   lint         — the react-hooks rules, which tsc cannot see
+      #   format:check — so formatting never shows up inside a real diff
+      #   fidelity     — the engine still reproduces the shipped palette, 66/66
+      #                  rungs within 1 LSB, and it NAMES the shade that moved
+      #   dead-css     — selectors in app.css no call site reaches
+      #   class-conflicts — two unprefixed utilities for one property in one string
+      #   test         — the suite
+      - run: npm run verify
+
+  pages-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # The sub-path is the part worth testing, and a root-served dev server never
+      # exercises it: Vite rewrites every asset URL against `base`. Get it wrong and
+      # the deployed page loads a blank document with 404s in the console.
+      - run: npm run build
+        env:
+          VITE_BASE: /${{ github.event.repository.name }}/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  # Split from the build on purpose: `deploy-pages` needs `pages: write` and
+  # `id-token: write`, and a build job that can also publish is a build job whose every
+  # dependency can publish. The narrow grant lives here, on a job that runs no project
+  # code of its own.
+  deploy:
+    needs: [verify, pages-build]
+    # Pushes to main only. A pull request must be able to prove it builds without
+    # replacing the live site with the contents of its branch.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

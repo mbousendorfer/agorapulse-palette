@@ -43,3 +43,17 @@ npm run dev
 | `npm run fidelity` | solve the spec, compare to the shipped palette, print the derivation |
 | `npm run verify`   | typecheck, lint, format, fidelity, dead CSS, class conflicts, tests  |
 | `npm run figma`    | re-vendor `figma-variables.json` from a Figma export zip             |
+
+The build is deployed to GitHub Pages on every push to `main`.
+
+## What it holds against itself
+
+Three numbers this tool refuses to write down as prose, because prose does not fail:
+
+- **66/66** — `npm run fidelity` re-derives every shade from the spec and compares it to
+  the palette the design system ships. It names the shade that moved.
+- **The seven constraints** — evaluated live in the status bar, with the slack on each.
+  "2 with no slack" means the next nudge in that direction breaks the palette.
+- **What each anchor moves** — measured per row in "How this palette is built" by nudging
+  that anchor and re-solving, not remembered. The sentence it replaced said "35, 37 and
+  49"; measured, they are 33, 35 and 49, so it had already drifted.
