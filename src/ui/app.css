@@ -180,21 +180,22 @@ body {
 
 /* ---------------------------------------------------------------- layout --- */
 
+/*
+   ONE column, where the lab has two.
+
+   That grid carried a 232px rail for six workspaces — Reference, Semantic, Component,
+   Migration, Rules & audit, Diff & export. Five of the six were the migration workbench, so a
+   rail here would be a single item pointing at the page you are already on.
+
+   The rows stay: a scrolling page above a fixed 34px status bar. The bar has to be a grid row
+   rather than a sticky footer because it is a fixed height that text must not wrap inside —
+   see `.statusbar`.
+*/
 .shell {
     display: grid;
-    /* Two columns. The third was the preview dock at `var(--app-dock, 380px)`, present on
-       exactly one screen and hidden the rest of the time — the preview is a tab on the
-       component page now, so the column, the width variable and the `.dock-hidden` variant
-       that collapsed it are all gone. */
-    grid-template-columns: 232px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr) 34px;
     height: 100%;
-}
-
-.rail {
-    grid-row: 1 / 3;
-    overflow-y: auto;
-    padding: 14px 0;
 }
 
 /*
@@ -261,8 +262,8 @@ body {
 }
 
 .statusbar {
-    /* `2 / 4` while the shell had three columns; the third is gone. */
-    grid-column: 2 / 3;
+    /* The shell is one column now, so there is no column to skip. */
+    grid-column: 1 / -1;
     display: flex;
     align-items: center;
     gap: 16px;
@@ -771,10 +772,6 @@ pre.code {
 /* ------------------------------------------------- collapsible navigation --- */
 /* Both the rail and the Groups tree collapse: on a 3-column shell with a
    preview dock, the token tables are the first thing to run out of width. */
-
-.shell.rail-collapsed {
-    grid-template-columns: 46px minmax(0, 1fr);
-}
 
 .grouptree-toggle {
     flex: 0 0 auto;
