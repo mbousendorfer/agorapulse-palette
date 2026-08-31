@@ -1,0 +1,12 @@
+{
+    "ref": {
+        "borderRadius": {
+            "sm" : {
+                "value": "4px"
+            },
+            "md" : {
+                "value": "8px"
+            }
+        }
+    }
+}

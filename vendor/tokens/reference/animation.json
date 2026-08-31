@@ -1,0 +1,18 @@
+{
+    "ref": {
+        "animation": {
+            "long" : {
+                "value": "400ms"
+            },
+            "normal" : {
+                "value": "250ms"
+            },
+            "short" : {
+                "value": "150ms"
+            },
+            "xshort" : {
+                "value": "75ms"
+            }
+        }
+    }
+}

@@ -1,0 +1,32 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+
+# `tsc -b` incremental state. Machine-local and rewritten on every build.
+*.tsbuildinfo
+
+# Vitest / coverage output
+coverage/
+
+# Editor and OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+Thumbs.db
+
+# Tool caches
+.eslintcache
+.vite/
+
+# Never. This repo has no reason to hold one, which is exactly when a stray
+# one gets committed.
+.env
+.env.*
+
+# Staging and rollback dirs from `npm run sync`. Present only mid-run, or after a
+# crash violent enough to skip the cleanup.
+vendor.staging/
+vendor.previous/
+public/vendor.staging/
+public/vendor.previous/

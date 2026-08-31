@@ -1,0 +1,33 @@
+{
+    "ref": {
+        "spacing": {
+            "xxxs" : {
+                "value": "4px"
+            },
+            "xxs" : {
+                "value": "8px"
+            },
+            "xs" : {
+                "value": "12px"
+            },
+            "sm" : {
+                "value": "16px"
+            },
+            "md" : {
+                "value": "24px"
+            },
+            "lg" : {
+                "value": "32px"
+            },
+            "xl" : {
+                "value": "40px"
+            },
+            "xxl" : {
+                "value": "48px"
+            },
+            "xxxl" : {
+                "value": "60px"
+            }
+        }
+    }
+}

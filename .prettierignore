@@ -1,0 +1,16 @@
+# Not ours to format.
+node_modules/
+dist/
+vendor/
+public/vendor/
+package-lock.json
+
+# Per-machine Claude Code settings, written by the tool and gitignored globally
+# rather than here — so it never reaches CI, but it did break `npm run verify`
+# locally for anyone whose settings file was not prettier-shaped.
+.claude/settings.local.json
+
+# A generated snapshot of the palette the engine must reproduce byte for byte.
+# Reformatting it would make a fidelity failure look like a formatting change.
+spec/palette.baseline.json
+tsconfig.json

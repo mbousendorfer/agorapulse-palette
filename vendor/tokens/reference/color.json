@@ -1,0 +1,562 @@
+{
+    "ref": {
+        "color": {
+            "white": {
+                "value": "#FFFFFF",
+                "comment": "deprecated - prefer the --sys-* roles; the 2.0 primitive is --ref-palette-white"
+            },
+            "background": {
+                "value": "#F9F9FA",
+                "comment": "deprecated - prefer the --sys-* roles; this one is --sys-color-surface-secondary"
+            },
+            "orange": {
+                "150": {
+                    "value": "#C83E07",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-orange-*"
+                },
+                "100": {
+                    "value": "#FF6726",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-orange-*"
+                },
+                "80": {
+                    "value": "#FF7E46",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-orange-*"
+                },
+                "60": {
+                    "value": "#FFA47D",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-orange-*"
+                },
+                "40": {
+                    "value": "#FFC2A8",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-orange-*"
+                },
+                "20": {
+                    "value": "#FFE1D4",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-orange-*"
+                },
+                "10": {
+                    "value": "#FFEFE9",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-orange-*"
+                }
+            },
+            "electricBlue": {
+                "150": {
+                    "value": "#0E72D6",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-electric-blue-*"
+                },
+                "100": {
+                    "value": "#178DFE",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-electric-blue-*"
+                },
+                "80": {
+                    "value": "#3A9EFE",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-electric-blue-*"
+                },
+                "60": {
+                    "value": "#74BBFE",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-electric-blue-*"
+                },
+                "40": {
+                    "value": "#A2D1FF",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-electric-blue-*"
+                },
+                "20": {
+                    "value": "#D1E8FF",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-electric-blue-*"
+                },
+                "10": {
+                    "value": "#E8F4FF",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-electric-blue-*"
+                },
+                "05": {
+                    "value": "#F3F9FF",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-electric-blue-*"
+                }
+            },
+            "softBlue": {
+                "150": {
+                    "value": "#2873BA",
+                    "comment": "deprecated - prefer the --sys-* roles; no 2.0 equivalent for this hue"
+                },
+                "100": {
+                    "value": "#61A4E4",
+                    "comment": "deprecated - prefer the --sys-* roles; no 2.0 equivalent for this hue"
+                },
+                "80": {
+                    "value": "#78B1E8",
+                    "comment": "deprecated - prefer the --sys-* roles; no 2.0 equivalent for this hue"
+                },
+                "60": {
+                    "value": "#A0C8EF",
+                    "comment": "deprecated - prefer the --sys-* roles; no 2.0 equivalent for this hue"
+                },
+                "40": {
+                    "value": "#C0DBF4",
+                    "comment": "deprecated - prefer the --sys-* roles; no 2.0 equivalent for this hue"
+                },
+                "20": {
+                    "value": "#DFEDFA",
+                    "comment": "deprecated - prefer the --sys-* roles; no 2.0 equivalent for this hue"
+                },
+                "10": {
+                    "value": "#EFF5FC",
+                    "comment": "deprecated - prefer the --sys-* roles; no 2.0 equivalent for this hue"
+                }
+            },
+            "grey": {
+                "150": {
+                    "value": "#212E44",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-grey-*"
+                },
+                "100": {
+                    "value": "#344563",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-grey-*"
+                },
+                "80": {
+                    "value": "#5D6A82",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-grey-*"
+                },
+                "60": {
+                    "value": "#858FA1",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-grey-*"
+                },
+                "40": {
+                    "value": "#AEB5C1",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-grey-*"
+                },
+                "20": {
+                    "value": "#D6DAE0",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-grey-*"
+                },
+                "10": {
+                    "value": "#EAECEF",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-grey-*"
+                },
+                "05": {
+                    "value": "#F5F5F7",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-grey-*"
+                },
+                "bg": {
+                    "value": "#F9F9FA",
+                    "comment": "deprecated - prefer the --sys-* roles; this one is --sys-color-surface-secondary"
+                }
+            },
+            "green": {
+                "150": {
+                    "value": "#0F821D",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-green-*"
+                },
+                "100": {
+                    "value": "#45B854",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-green-*"
+                },
+                "80": {
+                    "value": "#61C26D",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-green-*"
+                },
+                "60": {
+                    "value": "#8FD498",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-green-*"
+                },
+                "40": {
+                    "value": "#B5E3BB",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-green-*"
+                },
+                "20": {
+                    "value": "#DAF1DD",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-green-*"
+                },
+                "10": {
+                    "value": "#ECF7ED",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-green-*"
+                }
+            },
+            "tag-orange": {
+                "150": {
+                    "value": "#A66200",
+                    "comment": "deprecated - prefer the --sys-* roles; no 2.0 equivalent for this hue"
+                },
+                "100": {
+                    "value": "#FBB500",
+                    "comment": "deprecated - prefer the --sys-* roles; no 2.0 equivalent for this hue"
+                },
+                "80": {
+                    "value": "#FCC026",
+                    "comment": "deprecated - prefer the --sys-* roles; no 2.0 equivalent for this hue"
+                },
+                "60": {
+                    "value": "#FDD366",
+                    "comment": "deprecated - prefer the --sys-* roles; no 2.0 equivalent for this hue"
+                },
+                "40": {
+                    "value": "#FDE199",
+                    "comment": "deprecated - prefer the --sys-* roles; no 2.0 equivalent for this hue"
+                },
+                "20": {
+                    "value": "#FEF0CC",
+                    "comment": "deprecated - prefer the --sys-* roles; no 2.0 equivalent for this hue"
+                },
+                "10": {
+                    "value": "#FFF8E6",
+                    "comment": "deprecated - prefer the --sys-* roles; no 2.0 equivalent for this hue"
+                }
+            },
+            "yellow": {
+                "150": {
+                    "value": "#A56608",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-yellow-*"
+                },
+                "100": {
+                    "value": "#FFE91F",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-yellow-*"
+                },
+                "80": {
+                    "value": "#FFEC41",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-yellow-*"
+                },
+                "60": {
+                    "value": "#FFF279",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-yellow-*"
+                },
+                "40": {
+                    "value": "#FFF6A5",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-yellow-*"
+                },
+                "20": {
+                    "value": "#FFFBD2",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-yellow-*"
+                },
+                "10": {
+                    "value": "#FFFDE9",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-yellow-*"
+                }
+            },
+            "red": {
+                "150": {
+                    "value": "#D80505",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-red-*"
+                },
+                "100": {
+                    "value": "#E81313",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-red-*"
+                },
+                "80": {
+                    "value": "#EB3636",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-red-*"
+                },
+                "60": {
+                    "value": "#F17171",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-red-*"
+                },
+                "40": {
+                    "value": "#F6A1A1",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-red-*"
+                },
+                "20": {
+                    "value": "#FAD0D0",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-red-*"
+                },
+                "10": {
+                    "value": "#FDE7E7",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-red-*"
+                }
+            },
+            "purple": {
+                "150": {
+                    "value": "#3C2C95",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-purple-*"
+                },
+                "100": {
+                    "value": "#6554C0",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-purple-*"
+                },
+                "80": {
+                    "value": "#7C6DC9",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-purple-*"
+                },
+                "60": {
+                    "value": "#A398D9",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-purple-*"
+                },
+                "40": {
+                    "value": "#C1BBE6",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-purple-*"
+                },
+                "20": {
+                    "value": "#E0DDF2",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-purple-*"
+                },
+                "10": {
+                    "value": "#EFEDF8",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-purple-*"
+                },
+                "05": {
+                    "value": "#F6F8FF",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-purple-*"
+                }
+            },
+            "mermaid": {
+                "gradient": {
+                    "from": {
+                        "value": "#578FFF",
+                        "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-mermaid-*"
+                    },
+                    "to": {
+                        "value": "#DF52FF",
+                        "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-mermaid-*"
+                    },
+                    "from40": {
+                        "value": "rgba(87, 143, 255, 0.4)",
+                        "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-mermaid-*"
+                    },
+                    "to40": {
+                        "value": "rgba(223, 82, 255, 0.4)",
+                        "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-mermaid-*"
+                    },
+                    "background": {
+                        "value": "linear-gradient(90deg, #578FFF 0%, #DF52FF 100%)",
+                        "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-mermaid-*"
+                    }
+                },
+                "20": {
+                    "value": "#EBE3FF",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-mermaid-*"
+                },
+                "10": {
+                    "value": "#F5F1FF",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-mermaid-*"
+                }
+            },
+            "menthol": {
+                "150": {
+                    "value": "#057E7A",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-menthol-*"
+                },
+                "100": {
+                    "value": "#0FA09B",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-menthol-*"
+                },
+                "80": {
+                    "value": "#1DBEB0",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-menthol-*"
+                },
+                "60": {
+                    "value": "#64C8BC",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-menthol-*"
+                },
+                "40": {
+                    "value": "#9FD9D6",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-menthol-*"
+                },
+                "20": {
+                    "value": "#CFECEA",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-menthol-*"
+                },
+                "10": {
+                    "value": "#F1F9F8",
+                    "comment": "deprecated - prefer the --sys-* roles; the renumbered scale is --ref-palette-menthol-*"
+                }
+            },
+            "data-cyan": {
+                "100": {
+                    "value": "#12AABA",
+                    "comment": "deprecated - prefer the --sys-* roles; this one is --sys-color-data-* / --ref-palette-data-*"
+                }
+            },
+            "data-navy": {
+                "100": {
+                    "value": "#4A6ACC",
+                    "comment": "deprecated - prefer the --sys-* roles; this one is --sys-color-data-* / --ref-palette-data-*"
+                }
+            },
+            "data-sky": {
+                "100": {
+                    "value": "#3A92E8",
+                    "comment": "deprecated - prefer the --sys-* roles; this one is --sys-color-data-* / --ref-palette-data-*"
+                }
+            },
+            "data-iris": {
+                "100": {
+                    "value": "#8A62CC",
+                    "comment": "deprecated - prefer the --sys-* roles; this one is --sys-color-data-* / --ref-palette-data-*"
+                }
+            },
+            "data-peony": {
+                "100": {
+                    "value": "#CC2878",
+                    "comment": "deprecated - prefer the --sys-* roles; this one is --sys-color-data-* / --ref-palette-data-*"
+                }
+            },
+            "data-cherry": {
+                "100": {
+                    "value": "#CC5040",
+                    "comment": "deprecated - prefer the --sys-* roles; this one is --sys-color-data-* / --ref-palette-data-*"
+                }
+            },
+            "data-tangerine": {
+                "100": {
+                    "value": "#DC6A30",
+                    "comment": "deprecated - prefer the --sys-* roles; this one is --sys-color-data-* / --ref-palette-data-*"
+                }
+            },
+            "data-sun": {
+                "100": {
+                    "value": "#D98800",
+                    "comment": "deprecated - prefer the --sys-* roles; this one is --sys-color-data-* / --ref-palette-data-*"
+                }
+            },
+            "data-lime": {
+                "100": {
+                    "value": "#42B85A",
+                    "comment": "deprecated - prefer the --sys-* roles; this one is --sys-color-data-* / --ref-palette-data-*"
+                }
+            },
+            "data-emerald": {
+                "100": {
+                    "value": "#12A87A",
+                    "comment": "deprecated - prefer the --sys-* roles; this one is --sys-color-data-* / --ref-palette-data-*"
+                }
+            },
+            "web": {
+                "100": {
+                    "value": "#1F1F1F",
+                    "comment": "deprecated - prefer the --sys-* roles; the 2.0 primitive is --ref-palette-social-*"
+                }
+            },
+            "facebook": {
+                "100": {
+                    "value": "#0866FF",
+                    "comment": "deprecated - prefer the --sys-* roles; the 2.0 primitive is --ref-palette-social-*"
+                },
+                "10": {
+                    "value": "#e7f1fd",
+                    "comment": "deprecated - prefer the --sys-* roles; the 2.0 primitive is --ref-palette-social-*"
+                }
+            },
+            "instagram": {
+                "100": {
+                    "value": "#DD2A7B",
+                    "comment": "deprecated - prefer the --sys-* roles; the 2.0 primitive is --ref-palette-social-*"
+                },
+                "10": {
+                    "value": "#fbe9f1",
+                    "comment": "deprecated - prefer the --sys-* roles; the 2.0 primitive is --ref-palette-social-*"
+                }
+            },
+            "twitter": {
+                "100": {
+                    "value": "#1DA1F2",
+                    "comment": "deprecated - prefer the --sys-* roles; no 2.0 equivalent for this hue"
+                },
+                "10": {
+                    "value": "#e8f5fd",
+                    "comment": "deprecated - prefer the --sys-* roles; no 2.0 equivalent for this hue"
+                }
+            },
+            "google-my-business": {
+                "100": {
+                    "value": "#2668B2",
+                    "comment": "deprecated - prefer the --sys-* roles; no 2.0 equivalent for this hue"
+                },
+                "10": {
+                    "value": "#E9F0F7",
+                    "comment": "deprecated - prefer the --sys-* roles; no 2.0 equivalent for this hue"
+                }
+            },
+            "threads": {
+                "100": {
+                    "value": "#000000",
+                    "comment": "deprecated - prefer the --sys-* roles; the 2.0 primitive is --ref-palette-social-*"
+                },
+                "10": {
+                    "value": "#e8f5fd",
+                    "comment": "deprecated - prefer the --sys-* roles; the 2.0 primitive is --ref-palette-social-*"
+                }
+            },
+            "bluesky": {
+                "100": {
+                    "value": "#1185FE",
+                    "comment": "deprecated - prefer the --sys-* roles; the 2.0 primitive is --ref-palette-social-*"
+                },
+                "10": {
+                    "value": "#E7F3FF",
+                    "comment": "deprecated - prefer the --sys-* roles; the 2.0 primitive is --ref-palette-social-*"
+                }
+            },
+            "x": {
+                "100": {
+                    "value": "#000000",
+                    "comment": "deprecated - prefer the --sys-* roles; the 2.0 primitive is --ref-palette-social-*"
+                }
+            },
+            "linkedin": {
+                "100": {
+                    "value": "#2668B2",
+                    "comment": "deprecated - prefer the --sys-* roles; the 2.0 primitive is --ref-palette-social-*"
+                },
+                "10": {
+                    "value": "#e6eff9",
+                    "comment": "deprecated - prefer the --sys-* roles; the 2.0 primitive is --ref-palette-social-*"
+                }
+            },
+            "youtube": {
+                "100": {
+                    "value": "#FE0101",
+                    "comment": "deprecated - prefer the --sys-* roles; the 2.0 primitive is --ref-palette-social-*"
+                },
+                "10": {
+                    "value": "#fee5e5",
+                    "comment": "deprecated - prefer the --sys-* roles; the 2.0 primitive is --ref-palette-social-*"
+                }
+            },
+            "tiktok": {
+                "default": {
+                    "100": {
+                        "value": "#000000",
+                        "comment": "deprecated - prefer the --sys-* roles; the 2.0 primitive is --ref-palette-social-*"
+                    },
+                    "10": {
+                        "value": "#e5e5e5",
+                        "comment": "deprecated - prefer the --sys-* roles; the 2.0 primitive is --ref-palette-social-*"
+                    }
+                },
+                "blue": {
+                    "100": {
+                        "value": "#25F4EE",
+                        "comment": "deprecated - prefer the --sys-* roles; the 2.0 primitive is --ref-palette-social-*"
+                    },
+                    "10": {
+                        "value": "#e9fdfd",
+                        "comment": "deprecated - prefer the --sys-* roles; the 2.0 primitive is --ref-palette-social-*"
+                    }
+                },
+                "red": {
+                    "100": {
+                        "value": "#FE2C55",
+                        "comment": "deprecated - prefer the --sys-* roles; the 2.0 primitive is --ref-palette-social-*"
+                    },
+                    "10": {
+                        "value": "#fee9ee",
+                        "comment": "deprecated - prefer the --sys-* roles; the 2.0 primitive is --ref-palette-social-*"
+                    }
+                }
+            },
+            "pinterest": {
+                "100": {
+                    "value": "#E60023",
+                    "comment": "deprecated - prefer the --sys-* roles; the 2.0 primitive is --ref-palette-social-*"
+                },
+                "10": {
+                    "value": "#fee5e5",
+                    "comment": "deprecated - prefer the --sys-* roles; the 2.0 primitive is --ref-palette-social-*"
+                }
+            },
+            "reddit": {
+                "100": {
+                    "value": "#FF4500",
+                    "comment": "deprecated - prefer the --sys-* roles; the 2.0 primitive is --ref-palette-social-*"
+                }
+            }
+        }
+    }
+}

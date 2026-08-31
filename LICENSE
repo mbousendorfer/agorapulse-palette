@@ -1,0 +1,26 @@
+Copyright (c) Agorapulse. All rights reserved.
+
+This repository is proprietary and confidential. It is not open source and carries
+no licence to use, copy, modify or distribute.
+
+It must stay PRIVATE, for one reason rather than the two that keep
+`agorapulse-color-lab` private:
+
+  It vendors design tokens from `agorapulse/design`, which is a private repository.
+  `vendor/tokens/` is that snapshot, and `vendor/figma-variables.json` is an export
+  of the Agorapulse Figma variable collections. `spec/palette.baseline.json` also
+  carries five brand anchor hexes and seven family hues.
+
+What it does NOT carry, and this is deliberate:
+
+  - No compiled design-system stylesheets. `agorapulse-color-lab` vendors 1.9 MB of
+    them under `public/vendor/` for its component previews; this tool has no preview
+    and reads none. The palette wall paints from custom properties it writes itself.
+  - No licensed typeface. Averta is not here, in the working tree or in the history —
+    this repository was started with a fresh `git init` for that reason. The only
+    font is Geist, OFL-1.1, from fontsource.
+
+That second point is why this repository could be published if the vendored tokens
+were replaced with substituted values, and why `agorapulse-color-lab` cannot be
+published at all: its history holds the Averta binaries, which is not a .gitignore
+change. Anyone considering it should read `docs/decisions.md` there first.

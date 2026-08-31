@@ -1,0 +1,37 @@
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "lib": ["ES2022", "DOM", "DOM.Iterable"],
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "jsx": "react-jsx",
+        "types": ["node", "vitest/globals"],
+        "strict": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noFallthroughCasesInSwitch": true,
+        "resolveJsonModule": true,
+        "esModuleInterop": true,
+        "isolatedModules": true,
+        "skipLibCheck": true,
+        "noEmit": true,
+        "allowImportingTsExtensions": true,
+
+        /* `@/…` — what the shadcn CLI writes into every component it generates.
+           Mirrored in vite.config.ts; the two must not drift. */
+        "baseUrl": ".",
+        "paths": { "@/*": ["./src/*"] },
+
+        /* Strictness beyond `strict`, chosen for what this code actually does.
+           `noImplicitReturns` matters most in the solver, where a branch that
+           forgets to return a lightness silently yields undefined and poisons
+           every rung derived from it. */
+        "noImplicitOverride": true,
+        "noImplicitReturns": true,
+        "verbatimModuleSyntax": true
+    },
+    /* `scripts` and the config files sat outside the project, so nothing ever
+       typechecked the sync script, the audit or the fidelity report — the three
+       programs CI depends on to prove the snapshot and the engine still agree. */
+    "include": ["src", "scripts", "vite.config.ts", "vitest.config.ts"]
+}

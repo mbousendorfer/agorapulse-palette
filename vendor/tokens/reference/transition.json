@@ -1,0 +1,9 @@
+{
+    "ref": {
+        "transition": {
+            "duration" : {
+                "value": "250ms"
+            }
+        }
+    }
+}

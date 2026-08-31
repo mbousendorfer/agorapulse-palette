@@ -1,0 +1,96 @@
+{
+    "_comment": [
+        "The spec that reproduces the palette currently shipped in the design-system repo,",
+        "at libs/ui-theme/src/tokens/reference/palette.json. This file is the 'before' side of",
+        "every diff, and `npm run verify` asserts that solving it regenerates all 66 hexes",
+        "to within 1 LSB per channel.",
+        "",
+        "Nothing here is a measurement of the palette — every value is either a hex somebody",
+        "decided, a number somebody chose, or a constraint target. The 66 hexes are outputs.",
+        "",
+        "Do not 'fix' the two declared overrides. Each records a decision, and the reason",
+        "field is shown verbatim in the UI."
+    ],
+    "version": 1,
+    "chromatic": {
+        "rung500From": ["electricBlue.500", "orange.500"],
+        "rung700From": "purple.700",
+        "step100": 0.0269,
+        "lowPlateauDivisor": 2,
+        "highPlateauDivisor": 3,
+        "contrast700on200": 4.5,
+        "chromaFactor": 0.98,
+        "lightEnvelope": [0.012, 0.029, 0.079, 0.136],
+        "families": [
+            {
+                "id": "electricBlue",
+                "label": "Electric Blue",
+                "hue": 253.5,
+                "chromaFactor": null,
+                "anchors": { "500": "#178DFE" }
+            },
+            {
+                "id": "orange",
+                "label": "Orange",
+                "hue": 40.6,
+                "chromaFactor": null,
+                "anchors": { "500": "#FF6726" }
+            },
+            {
+                "id": "green",
+                "label": "Green",
+                "hue": 145.6,
+                "chromaFactor": null,
+                "anchors": {}
+            },
+            {
+                "id": "red",
+                "label": "Red",
+                "hue": 28.6,
+                "chromaFactor": null,
+                "anchors": {}
+            },
+            {
+                "id": "yellow",
+                "label": "Yellow",
+                "hue": 79.9,
+                "chromaFactor": null,
+                "anchors": {}
+            },
+            {
+                "id": "purple",
+                "label": "Purple",
+                "hue": 286.7,
+                "chromaFactor": null,
+                "anchors": { "700": "#6554C0" }
+            },
+            {
+                "id": "menthol",
+                "label": "Menthol",
+                "hue": 190.5,
+                "chromaFactor": null,
+                "anchors": {}
+            }
+        ]
+    },
+    "grey": {
+        "anchor100": "#F9F9FA",
+        "anchor1000": "#344563",
+        "step100": 0.0309,
+        "contrast800on200": 4.5,
+        "hue200": 248,
+        "hue1000": 261.4
+    },
+    "overrides": [
+        {
+            "rung": "electricBlue.700",
+            "hex": "#086DC9",
+            "reason": "Lightened off-ladder on request. The raw ladder value #0768C1 already cleared the 4.5 minimum on its own 200 at 4.84; this spends that headroom to land at exactly 4.50. Cost: 700 on 300 drops to 3.39, the worst in the palette, and the 600->700 separation narrows from 1.37 to 1.27."
+        },
+        {
+            "rung": "grey.300",
+            "hex": "#DFE3E8",
+            "reason": "Lightened off-ladder after the feedback that grey-300 read as much stronger than grey-200. Only +0.0099 L* was available without touching the anchors or breaking contrast(800,200); the improvement is real but modest, and it is the whole budget."
+        }
+    ]
+}

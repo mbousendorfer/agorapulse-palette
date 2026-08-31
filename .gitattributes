@@ -1,0 +1,12 @@
+# Normalise text, and never let a binary asset be mangled by EOL conversion.
+* text=auto eol=lf
+
+*.otf binary
+*.ttf binary
+*.woff binary
+*.woff2 binary
+*.png binary
+*.jpg binary
+
+# The palette the engine must reproduce byte for byte. Never touched by a filter.
+spec/palette.baseline.json text eol=lf

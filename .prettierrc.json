@@ -1,0 +1,18 @@
+{
+  "printWidth": 100,
+  "tabWidth": 4,
+  "singleQuote": true,
+  "trailingComma": "all",
+  "semi": true,
+  "arrowParens": "always",
+  "overrides": [
+    {
+      "files": ["*.css"],
+      "options": { "printWidth": 90 }
+    },
+    {
+      "files": ["*.json", "*.md", "*.yml"],
+      "options": { "tabWidth": 2 }
+    }
+  ]
+}

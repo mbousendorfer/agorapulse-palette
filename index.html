@@ -1,0 +1,59 @@
+<!doctype html>
+<!--
+    `class="dark"` is load-bearing, not decoration, and it is applied by the script below
+    rather than written here.
+
+    shadcn's components carry their dark-mode refinements as `dark:` modifiers —
+    `dark:border-input`, `dark:bg-input/30`, `dark:hover:bg-accent/50` — and the variant is
+    scoped `&:is(.dark *)`. Without the class those compiled rules match nothing.
+    `theme.css` holds LIGHT in `:root` and dark under `.dark`, so the class also selects the
+    palette itself.
+-->
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Agorapulse Palette</title>
+        <meta
+            name="description"
+            content="Solve and edit the Agorapulse V3 reference palette: move an anchor, watch all 66 shades re-derive."
+        />
+    </head>
+    <body>
+        <!--
+            The class is set BEFORE first paint, and that is the whole reason this is an
+            inline blocking script rather than an effect in React.
+
+            Applying it from a `useEffect` means the first frame renders under `:root`, which
+            is the LIGHT palette — so every load of a dark-mode session would flash white.
+            That flash is worst on exactly this app: it is the surface people judge hues
+            against.
+
+            `dark` is the default when nothing is stored. Not the system setting: this tool is
+            a background for judging colour, and a light chrome biases that judgement, so it
+            opts in rather than following the OS. `system` is offered as an explicit third
+            choice, and only then is `prefers-color-scheme` consulted.
+
+            Wrapped in try/catch because a private window can throw on localStorage access,
+            and a theme preference is not worth a blank page.
+        -->
+        <script>
+            (function () {
+                var mode = 'dark';
+                try {
+                    var stored = localStorage.getItem('agorapulse-palette-theme');
+                    if (stored === 'light' || stored === 'dark' || stored === 'system')
+                        mode = stored;
+                } catch (e) {}
+                if (mode === 'system') {
+                    mode = window.matchMedia('(prefers-color-scheme: light)').matches
+                        ? 'light'
+                        : 'dark';
+                }
+                if (mode === 'dark') document.documentElement.classList.add('dark');
+            })();
+        </script>
+        <div id="app"></div>
+        <script type="module" src="/src/main.tsx"></script>
+    </body>
+</html>

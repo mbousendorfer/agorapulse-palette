@@ -1,0 +1,69 @@
+{
+    "ref": {
+        "font": {
+            "family": {
+                "value": "Averta"
+            },
+            "size": {
+                "xs": {
+                    "value": "12px"
+                },
+                "sm": {
+                    "value": "14px"
+                },
+                "md": {
+                    "value": "16px"
+                },
+                "lg": {
+                    "value": "18px"
+                },
+                "xl": {
+                    "value": "20px"
+                },
+                "xxl": {
+                    "value": "24px"
+                },
+                "xxxl": {
+                    "value": "28px"
+                }
+            },
+            "weight": {
+                "regular": {
+                    "value": 400
+                },
+                "bold": {
+                    "value": 700
+                },
+                "extraBold": {
+                    "value": 800
+                },
+                "black": {
+                    "value": 900
+                }
+            },
+            "lineHeight": {
+                "xxs": {
+                    "value": "14px"
+                },
+                "xs": {
+                    "value": "16px"
+                },
+                "sm": {
+                    "value": "18px"
+                },
+                "md": {
+                    "value": "20px"
+                },
+                "lg": {
+                    "value": "24px"
+                },
+                "xl": {
+                    "value": "32px"
+                },
+                "xxl": {
+                    "value": "36px"
+                }
+            }
+        }
+    }
+}
