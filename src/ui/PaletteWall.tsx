@@ -96,11 +96,21 @@ export function PaletteWall() {
         // Clear first, so a family removed from the spec cannot leave a stale
         // property behind on the element.
         el.removeAttribute('style');
-        // 104 + 10×46 + gaps = 604px. At 1280 with the default layout the workspace
-        // offers 620, so the wall FITS — it used to want 676 against 540 and put a
-        // horizontal scrollbar under the app's home screen, hiding grey's 900 and
-        // 1000 behind it out of the box.
-        el.style.gridTemplateColumns = `104px repeat(${columnCount(solution.chromaticRungs)}, minmax(46px, 1fr))`;
+        /*
+           The COLUMN COUNT, not the whole template.
+
+           This used to write `gridTemplateColumns` outright, which put the label width, the
+           rung minimum and the count in a string here AND in `.wall`'s own rule — the note
+           on that rule said as much, "kept in step with the inline value PaletteWall writes
+           on mount". Two sources for one number.
+
+           It also made the grid unresponsive by construction: an inline style outranks a
+           stylesheet, so no media query could reflow the wall without `!important`. Handing
+           CSS the one thing only React knows — how many rungs the widest family has — lets
+           `app.css` own the geometry in both layouts, which is what the narrow-screen rule
+           below `.wall` now depends on.
+        */
+        el.style.setProperty('--wall-cols', String(columnCount(solution.chromaticRungs)));
         for (const [ref, solved] of solution.rungs) {
             const [family, rung] = ref.split('.');
             el.style.setProperty(rungCssVar(family, Number(rung)), solved.hex);
@@ -117,7 +127,17 @@ export function PaletteWall() {
             if (t && /^(INPUT|TEXTAREA)$/.test(t.tagName)) return;
             selectToken(null);
         };
-        const onDown = (e: MouseEvent) => {
+        /*
+           `pointerdown`, not `mousedown`.
+
+           iOS synthesises `mousedown` from a tap only for elements the engine considers
+           clickable, so tapping a blank part of the page to dismiss the inspector was
+           unreliable on a phone — and with the panel now a full-width bottom sheet, tapping
+           outside it is the main way to close it. `pointerdown` covers mouse, touch and pen
+           from one listener, which is also one listener fewer than adding `touchstart`
+           beside the old one.
+        */
+        const onDown = (e: PointerEvent) => {
             const t = e.target as HTMLElement;
             // A click on another swatch is a MOVE, not a dismissal — the button's
             // own handler already changes the selection, and closing here first
@@ -126,10 +146,10 @@ export function PaletteWall() {
             selectToken(null);
         };
         window.addEventListener('keydown', onKey);
-        document.addEventListener('mousedown', onDown);
+        document.addEventListener('pointerdown', onDown);
         return () => {
             window.removeEventListener('keydown', onKey);
-            document.removeEventListener('mousedown', onDown);
+            document.removeEventListener('pointerdown', onDown);
         };
     }, [selected, selectToken]);
 

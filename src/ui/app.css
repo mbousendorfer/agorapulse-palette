@@ -195,7 +195,19 @@ body {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr) 34px;
+    /*
+       `dvh`, with `100%` underneath it for anything that does not know the unit.
+
+       The `html, body, #app { height: 100% }` chain above resolves against the initial
+       containing block, and on iOS Safari that is the LARGE viewport — the one with the URL
+       bar collapsed. So a grid whose last row is a status bar put that bar below the visible
+       area until you scrolled, on the one screen where the bar is reporting whether your work
+       is saved. `dvh` tracks the viewport as the browser chrome comes and goes, which is
+       exactly the question being asked here. On a desktop it equals `100vh` and changes
+       nothing.
+    */
     height: 100%;
+    height: 100dvh;
 }
 
 /*
@@ -303,10 +315,17 @@ input[type='range'] {
 .wall {
     display: grid;
     gap: 3px;
-    /* Row label + 10 rungs (grey is the widest family). Kept in step with the
-       inline value PaletteWall writes on mount — see the note there for why 104
-       and 46 rather than 116 and 52. */
-    grid-template-columns: 104px repeat(10, minmax(46px, 1fr));
+    /*
+       Row label + one column per rung. `--wall-cols` is written by `PaletteWall` on every
+       solve, because how many rungs the widest family has is the one thing only React
+       knows — grey ships ten and a chromatic family can gain a dark rung. Everything else
+       about the geometry lives here, in one place, which is what lets the narrow-screen
+       rule further down reflow it.
+
+       104 + 10x46 + gaps = 594px. At 1280 with the workspace's own padding that fits; below
+       roughly 640 it does not, by 212-267px on a phone, which is what the media query is for.
+    */
+    grid-template-columns: 104px repeat(var(--wall-cols, 10), minmax(46px, 1fr));
     align-items: stretch;
 }
 
@@ -1320,6 +1339,12 @@ button.status-group {
    group tree leaves short leaf names on the tiles — `default`, `hovered`, `clicked` — so the
    132px the flat version needed is no longer bought by anything, and a wide rectangle read as
    a different component from the palette above it. */
+/* A ladder row's columns come from `--figma-cols`, written by `FigmaPalettes` — see the note
+   at that call site for why the count rather than the template. */
+.figma-wall-ladder {
+    grid-template-columns: repeat(var(--figma-cols, 8), minmax(46px, 1fr));
+}
+
 .figma-wall-free .figma-wall-tiles {
     grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
 }
@@ -1356,4 +1381,216 @@ button.status-group {
 .figma-tile .swatch-rung {
     white-space: normal;
     overflow: hidden;
+}
+
+/* ==========================================================================
+   NARROW SCREENS
+   ==========================================================================
+
+   The app was desktop-only by construction: before this block there were no width-based
+   media queries at all, and the numbers say why that mattered. The wall's min-content width
+   is 594px — a 104px label column plus ten 46px rungs plus gaps — and a phone viewport gives
+   the workspace 327px at 375 and 382px at 430. So the palette, the one thing the tool is
+   for, overflowed its container by 212-267px and sat under a horizontal scrollbar.
+
+   ONE breakpoint, at 640px, which is Tailwind's `sm`. Not a device width: it is the point
+   where the wall stops fitting, measured rather than picked, and it is the same number the
+   `sm:` prefixes already in the dialog use — so there is one boundary in the app rather than
+   a CSS one and a utility one that disagree.
+
+   The reflow keeps the thing that makes the wall an instrument: every rung stays a COLUMN,
+   so a rung number still means the same lightness read straight down. What gives way is the
+   label column, which becomes a row header above its ladder — that buys 104px, the single
+   largest saving available, and costs only that the name sits above rather than beside.
+*/
+@media (max-width: 639px) {
+    .workspace {
+        /* 16, not 24. Two 8px savings per side is 16px of ladder. */
+        padding: var(--s4) var(--s4) var(--s6);
+        gap: var(--s4);
+    }
+
+    /*
+       No label column: the family name spans the grid as its own row instead.
+
+       36px, and the number is measured rather than picked. `minmax(0, 1fr)` was tried first
+       and is wrong: it fits every width, and at 375px it makes a swatch 33px with 27px of
+       content, where grey's `1000` needs 28.8 at 12px mono. So it fits by clipping the one
+       string that identifies the tile, which is the wrong thing to buy width with.
+
+       At 36px the label always fits, the grid fits outright at 430px, and it overhangs by
+       17px at 393 and 35px at 375 — carried by `.workspace`'s existing horizontal scroll,
+       which is where the wall's overflow has always gone. A 35px nudge to read grey's dark
+       end is a better trade than a permanently truncated rung number.
+    */
+    .wall {
+        grid-template-columns: repeat(var(--wall-cols, 10), minmax(36px, 1fr));
+        gap: 2px;
+    }
+
+    .wall-family {
+        grid-column: 1 / -1;
+        flex-direction: row;
+        align-items: baseline;
+        gap: var(--s2);
+        padding: var(--s3) 0 var(--s1);
+    }
+
+    /* Both head cells span, for the same reason: there is no column 1 to sit beside now.
+       `.wall-head-rule` is `2 / -1` in the wide layout, which would leave it short here. */
+    .wall-head-label,
+    .wall-head-rule {
+        grid-column: 1 / -1;
+    }
+
+    /*
+       Shorter, and the hex read-out goes.
+
+       A six-character hex needs 43px at 12px mono and a swatch here is 36 — so it would clip,
+       which reads worse than absent. The rung number stays, because it is what identifies the
+       tile and it does fit; the hex is one tap away in the inspector, which shows it larger
+       and copyable anyway. 56px of height keeps three families on screen instead of two.
+    */
+    .swatch {
+        height: 56px;
+        padding: var(--s1) 3px;
+    }
+
+    .swatch-hex {
+        display: none;
+    }
+
+    /*
+       The inspector becomes a BOTTOM SHEET, and it has to be `fixed` to do it.
+
+       `absolute; left: 0; right: 0` was the first attempt and it is wrong: the containing
+       block is `.swatch-cell`, which on this layout is 36px wide, so the panel would have
+       rendered 36px across. The wide layout gets away with `width: 470px` precisely because
+       it ignores the cell's width, and `max-width: min(470px, 78vw)` then squeezed 470px of
+       channel sliders into 293 at a 375px viewport while leaving an 11% margin either side.
+
+       Fixed to the bottom edge instead, full width, which is what a phone does with a panel
+       this size. It covers the status bar while open — expected of a sheet, and the bar's
+       facts are still there when you dismiss it. `72dvh` with its own scroll, so a long panel
+       is reachable rather than clipped, and `dvh` rather than `vh` for the same reason the
+       shell uses it.
+
+       z-index 90, which is BELOW the toast's 100 and that ordering is the point. The hex inside
+       this panel is a copy button, so the toast it raises comes from within the sheet — put
+       the sheet on top and the confirmation renders behind the thing that asked for it. 90
+       still clears the wall's own `z-index: 1` and the wide layout's popover at 30, and it
+       beats the status bar, which has no `z-index` and would otherwise paint over the sheet
+       by virtue of coming later in the grid.
+    */
+    .swatch-pop {
+        position: fixed;
+        inset: auto 0 0 0;
+        top: auto;
+        width: auto;
+        max-width: none;
+        max-height: 72dvh;
+        overflow-y: auto;
+        z-index: 90;
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        animation-name: pop-in-up;
+    }
+
+    /* Both edge cases are about which side of a 470px popover overhangs, and a full-width
+       sheet has no side to overhang. `[data-flip]` already used `pop-in-up`; now everything
+       does, because a sheet rises from the bottom whichever row raised it. */
+    .swatch-pop[data-end],
+    .swatch-pop[data-flip] {
+        inset: auto 0 0 0;
+        top: auto;
+    }
+
+    /*
+       The status bar wraps instead of scrolling.
+
+       It was a fixed 34px grid row with `overflow-x: auto` and a HIDDEN scrollbar, which on a
+       phone means four groups of live facts — whether the palette holds, whether your work is
+       saved — reachable only by a horizontal drag nobody can see is available. Two short rows
+       that are simply present beat one row that lies about its own extent.
+    */
+    .shell {
+        grid-template-rows: minmax(0, 1fr) auto;
+    }
+
+    .statusbar {
+        flex-wrap: wrap;
+        gap: var(--s1) var(--s3);
+        padding: var(--s2) var(--s4);
+        overflow-x: visible;
+    }
+
+    /* A vertical rule between wrapped rows is a rule pointing the wrong way. */
+    .statusbar > [data-slot='separator'] {
+        display: none;
+    }
+
+    .statusbar .status-spacer {
+        display: none;
+    }
+
+    /*
+       The reference card gets the same treatment as the wall, for the same reason: its rows
+       are a 104px label beside a tile grid, and 104 of 343px is too much to spend on a name.
+       Label above, tiles full width.
+    */
+    .figma-wall {
+        flex-direction: column;
+        gap: var(--s1);
+    }
+
+    .figma-wall > .wall-family {
+        flex: 0 0 auto;
+        flex-direction: row;
+        align-items: baseline;
+        gap: var(--s2);
+        padding-top: 0;
+    }
+
+    /*
+       A ladder here still scrolls, and that is deliberate rather than unfinished.
+
+       `--figma-cols` reaches 10 for grey, which at 46px minimum wants 496px against ~343.
+       The wall above solves that by dropping its hex labels, because the wall is the
+       instrument and has to fit. This card is the reference you check the wall AGAINST — its
+       job is that the Figma names line up under the same rungs, so shrinking the tiles until
+       they stop lining up would cost the only thing it is for. It scrolls instead, with the
+       scrollbar VISIBLE: the status bar's hidden-scrollbar trick is what made its own
+       overflow undiscoverable, and that mistake is not worth repeating here.
+    */
+    .figma-wall-ladder {
+        overflow-x: auto;
+        scrollbar-width: thin;
+    }
+
+    .figma-wall-free .figma-wall-tiles {
+        grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+    }
+}
+
+/* ==========================================================================
+   NO HOVER — touch, and the two controls it used to hide completely
+   ==========================================================================
+
+   `.wall-family-remove` (drop a family you added) and `.rung-ctl` (add or drop a family's
+   darkest rung) are `opacity: 0` until their row is hovered. That is a good desktop pattern
+   and on a touch device it removes both features outright: there is no hover to give, and
+   an `opacity: 0` control offers nothing to tap at in the first place. Not degraded —
+   absent, with no way to discover they exist.
+
+   `(hover: none)` is the precise question to ask, rather than inferring touch from a width:
+   a small window on a laptop still has a pointer and should keep the reveal, and a large
+   tablet has no hover at any width.
+
+   Kept quiet rather than made loud: 0.55 is visible enough to find and tap, and low enough
+   that eight remove buttons do not compete with the 66 colours they sit beside.
+*/
+@media (hover: none) {
+    .wall-family-remove,
+    .rung-ctl {
+        opacity: 0.55;
+    }
 }

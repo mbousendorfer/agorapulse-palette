@@ -253,7 +253,15 @@ function AddFamilyForm({ onDone }: { onDone: () => void }) {
                                         }}
                                     >
                                         <span>{r.rung}</span>
-                                        <span>{r.hex.replace('#', '')}</span>
+                                        {/* The hex hides on a narrow screen for the same
+                                            reason the wall's does: eight tiles in a ~295px
+                                            dialog are about 33px wide, and a six-character
+                                            hex at 12px needs roughly 50, so it would clip —
+                                            which reads worse than absent. The rung number
+                                            identifies the tile; the hex is in the box above. */}
+                                        <span className="hidden sm:inline">
+                                            {r.hex.replace('#', '')}
+                                        </span>
                                     </div>
                                 ))}
                             </div>

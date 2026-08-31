@@ -321,14 +321,19 @@ export function FigmaPalettes() {
                             <div className="text-muted-foreground text-xs">{row.note}</div>
                         </div>
                         <div
-                            className="figma-wall-tiles"
-                            /* Ladder rows declare their columns so every family lines up under
-                               the same rung; free rows let `auto-fill` decide. */
+                            className={`figma-wall-tiles${row.ladder ? ' figma-wall-ladder' : ''}`}
+                            /*
+                               Ladder rows declare their COLUMN COUNT so every family lines up
+                               under the same rung; free rows let `auto-fill` decide.
+
+                               The count, not the whole template — same reason as the palette
+                               wall. An inline `gridTemplateColumns` outranks any stylesheet, so
+                               writing the template here made the row unreflowable and no media
+                               query could reach it. `app.css` owns the geometry in both layouts.
+                            */
                             style={
                                 row.ladder
-                                    ? {
-                                          gridTemplateColumns: `repeat(${columns}, minmax(46px, 1fr))`,
-                                      }
+                                    ? { ['--figma-cols' as string]: String(columns) }
                                     : undefined
                             }
                         >
