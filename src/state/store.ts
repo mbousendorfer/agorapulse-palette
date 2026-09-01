@@ -66,6 +66,27 @@ export interface AppState {
     /** The only persisted field. Everything below is derived from it. */
     spec: PaletteSpec;
 
+    // ------------------------------------------------------------------ history
+    /**
+     * Specs to go back to, oldest first. NOT persisted.
+     *
+     * The tool used to offer exactly one recovery — `Reset palette`, back to the shipped
+     * baseline — for an action that moves up to 49 of the 66 shades. So the only way to take
+     * back one anchor nudge was to discard the whole palette, and both confirmations on the
+     * page exist because of that: Nielsen's third heuristic is that undo BEATS "are you
+     * sure?", and this had the second without the first.
+     *
+     * A history is cheap here for the same reason the store is small: `spec` is the entire
+     * authored state, so a step is one `structuredClone` of a plain-JSON object.
+     *
+     * Deliberately not persisted. A reload restores your palette, and a history that survived
+     * it would let you undo past the point the session started — into work the notice said
+     * nothing about.
+     */
+    past: PaletteSpec[];
+    /** Specs undone but not yet superseded, most recently undone first. */
+    future: PaletteSpec[];
+
     // ----------------------------------------------------------------- derived
     solution: PaletteSolution;
     graph: TokenGraph;
@@ -107,6 +128,10 @@ export interface AppState {
     dismissRestored: () => void;
     /** Back to the shipped palette. */
     resetPalette: () => void;
+    /** One step back through `past`. A no-op when it is empty. */
+    undo: () => void;
+    /** One step forward through `future`. A no-op when it is empty. */
+    redo: () => void;
 }
 
 /**
@@ -237,14 +262,39 @@ function mergeSession(persisted: unknown, current: AppState): AppState {
 
 // ------------------------------------------------------------------ store ----
 
+/**
+ * How deep the history goes.
+ *
+ * Deep enough that a working session is covered, bounded because every step is a whole spec
+ * held in memory. Reaching the cap drops the OLDEST step, so the recent past — the part
+ * anybody actually reaches for — is what survives.
+ */
+const HISTORY_LIMIT = 60;
+
 function initialise(
     set: (partial: Partial<AppState> | ((s: AppState) => Partial<AppState>)) => void,
     get: () => AppState,
 ): AppState {
     let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
+    /**
+     * Whether the current continuous gesture has already recorded its step.
+     *
+     * Without this a slider drag records one step per pointer move — a single sweep of the
+     * chroma handle is a couple of hundred of them — and `undo` stops meaning anything: it
+     * would walk back through the frames of one gesture rather than back past the gesture.
+     * So a drag records the spec it STARTED from, once, and everything until the handle is
+     * released folds into that one step.
+     *
+     * Reset by `setDragging(true)`, which is raised by every continuous control in the app:
+     * the three channel sliders and the native colour pickers.
+     */
+    let gestureRecorded = false;
+
     return {
         spec: cloneSpec(BASELINE_SPEC),
+        past: [],
+        future: [],
         solution: BASELINE_SOLUTION,
         graph,
         resolved: BASELINE_RESOLVED,
@@ -292,17 +342,35 @@ function initialise(
                 return;
             }
 
+            /*
+               The step is recorded HERE, after the solve succeeded, and that ordering is the
+               point: a refused edit keeps the last good palette, so recording it would put a
+               step in the history that undoing to changes nothing. Undo has to move the
+               palette every time, or it reads as broken.
+            */
+            const dragging = get().dragging;
+            const record = !dragging || !gestureRecorded;
+            if (dragging) gestureRecorded = true;
+
             set((s) => ({
                 spec,
                 solution,
                 ...rebuild(solution),
                 specDirty: isSpecDirty(spec),
                 revision: s.revision + 1,
+                past: record ? [...s.past, s.spec].slice(-HISTORY_LIMIT) : s.past,
+                /* Any new edit invalidates the redo branch — the standard rule, and the only
+                   one that cannot present a "forward" that no longer follows from here. */
+                future: record ? [] : s.future,
             }));
         },
 
         selectToken: (selectedToken) => set({ selectedToken }),
-        setDragging: (dragging) => set({ dragging }),
+        setDragging: (dragging) => {
+            // Opening a gesture arms the coalescer; releasing it does not need to.
+            if (dragging) gestureRecorded = false;
+            set({ dragging });
+        },
 
         /**
          * The theme lives in its OWN storage key, not in `partialize`.
@@ -334,6 +402,15 @@ function initialise(
 
         dismissRestored: () => set({ restored: null }),
 
+        /*
+           A reset is undoable, and it still asks first.
+
+           The confirmation stays because it is the one control that discards the whole work
+           product in a tool that authors exactly one artefact — that reasoning is unchanged.
+           What changes is that saying yes is no longer final: the discarded palette goes onto
+           the history like any other step, so "Reset" followed by "actually, no" is one
+           keystroke rather than a re-authoring.
+        */
         resetPalette: () =>
             set((s) => ({
                 spec: cloneSpec(BASELINE_SPEC),
@@ -343,8 +420,69 @@ function initialise(
                 specDirty: false,
                 revision: s.revision + 1,
                 restored: null,
+                past: [...s.past, s.spec].slice(-HISTORY_LIMIT),
+                future: [],
             })),
+
+        undo: () => step(set, get, 'undo'),
+        redo: () => step(set, get, 'redo'),
     };
+}
+
+/**
+ * One step in either direction, because the two are the same move mirrored.
+ *
+ * Written once rather than twice: the only asymmetry is which stack is popped and which is
+ * pushed, and two copies of "recompute every derived field from a spec" is exactly how one of
+ * them ends up forgetting `resolved`.
+ *
+ * A stored spec is re-SOLVED rather than restored alongside a cached solution, for the reason
+ * the top of this file gives: trusting a snapshot of a computation is the one thing this tool
+ * exists not to do. It also costs nothing here — a solve is ~3ms, and this runs on a keystroke.
+ */
+function step(
+    set: (partial: Partial<AppState> | ((s: AppState) => Partial<AppState>)) => void,
+    get: () => AppState,
+    direction: 'undo' | 'redo',
+): void {
+    const state = get();
+    const from = direction === 'undo' ? state.past : state.future;
+    if (from.length === 0) return;
+
+    const spec = from[from.length - 1];
+    let solution: PaletteSolution;
+    try {
+        solution = solvePalette(spec);
+    } catch {
+        /*
+           A step that no longer solves is dropped rather than applied, and said.
+
+           It should not be reachable — every spec in the history solved when it was recorded,
+           and nothing under it moves within a session. It is here because the alternative is
+           the failure `mergeSession` already guards against one layer up: a throw on the way
+           in leaves every derived field missing and blanks the app.
+        */
+        set({
+            past: direction === 'undo' ? state.past.slice(0, -1) : state.past,
+            future: direction === 'redo' ? state.future.slice(0, -1) : state.future,
+        });
+        state.say('Rejected: that step no longer solves against this snapshot');
+        return;
+    }
+
+    set((s) => ({
+        spec,
+        solution,
+        ...rebuild(solution),
+        specDirty: isSpecDirty(spec),
+        revision: s.revision + 1,
+        past:
+            direction === 'undo' ? s.past.slice(0, -1) : [...s.past, s.spec].slice(-HISTORY_LIMIT),
+        future:
+            direction === 'undo'
+                ? [...s.future, s.spec].slice(-HISTORY_LIMIT)
+                : s.future.slice(0, -1),
+    }));
 }
 
 export const useStore = create<AppState>()(

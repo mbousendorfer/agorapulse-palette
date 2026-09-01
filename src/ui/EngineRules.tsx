@@ -34,8 +34,6 @@
 
 import { useMemo, useState } from 'react';
 
-import { Card, CardContent } from '@/components/ui/card';
-
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Chip } from './Chip';
@@ -90,103 +88,100 @@ export function EngineRules() {
                         : `${spec.chromatic.families.length} hues on one ladder · ${spec.overrides.length} shades held off it`}
                 </em>
             </summary>
+            {/* No Card inside the fold. This was a bordered, rounded, elevated box inside a
+                `<details>` inside the page — three containers for one level of content, and the
+                one thing this file's own house rules forbid outright is nested elevation. The
+                fold's own rule is the section boundary; the content needs nothing else. */}
             <div className="fold-body">
-                <Card>
-                    <CardContent className="flex flex-col gap-8 pt-6">
-                        <div className="flex flex-col gap-3">
-                            <h3 className="text-foreground text-xs font-semibold">
-                                The five anchors
-                            </h3>
-                            <p className="text-muted-foreground max-w-prose text-xs">
-                                Every other shade is derived from these. The figure on each row is
-                                measured, not remembered: it is how many of the{' '}
-                                {solution.rungs.size} shades change hex when that anchor's lightness
-                                moves by 0.01 — so it answers what you will see move, rather than
-                                what structurally depends on it.
-                            </p>
-                            {spec.chromatic.families
-                                .filter((f) => Object.keys(f.anchors).length > 0)
-                                .map((family) =>
-                                    Object.entries(family.anchors).map(([rung, hex]) => (
-                                        <AnchorField
-                                            key={`${family.id}.${rung}`}
-                                            label={`${family.label} ${rung}`}
-                                            hex={hex as string}
-                                            moves={reach.get(`${family.id}.${rung}`)}
-                                            onChange={(next) =>
-                                                updateSpec((draft) => {
-                                                    const f = draft.chromatic.families.find(
-                                                        (x) => x.id === family.id,
-                                                    );
-                                                    if (f) f.anchors[Number(rung)] = next;
-                                                })
-                                            }
-                                        />
-                                    )),
-                                )}
-                            <AnchorField
-                                label="Grey 100"
-                                hex={spec.grey.anchor100}
-                                moves={reach.get('grey.100')}
-                                onChange={(next) =>
-                                    updateSpec((x) => void (x.grey.anchor100 = next))
-                                }
-                            />
-                            <AnchorField
-                                label="Grey 1000"
-                                hex={spec.grey.anchor1000}
-                                moves={reach.get('grey.1000')}
-                                onChange={(next) =>
-                                    updateSpec((x) => void (x.grey.anchor1000 = next))
-                                }
-                            />
-                        </div>
+                <div className="flex flex-col gap-8">
+                    <div className="flex flex-col gap-3">
+                        <h3 className="text-foreground text-xs font-semibold">The five anchors</h3>
+                        <p className="text-muted-foreground max-w-prose text-xs">
+                            Every other shade is derived from these. The figure on each row is
+                            measured, not remembered: it is how many of the {solution.rungs.size}{' '}
+                            shades change hex when that anchor's lightness moves by 0.01 — so it
+                            answers what you will see move, rather than what structurally depends on
+                            it.
+                        </p>
+                        {spec.chromatic.families
+                            .filter((f) => Object.keys(f.anchors).length > 0)
+                            .map((family) =>
+                                Object.entries(family.anchors).map(([rung, hex]) => (
+                                    <AnchorField
+                                        key={`${family.id}.${rung}`}
+                                        label={`${family.label} ${rung}`}
+                                        hex={hex as string}
+                                        moves={reach.get(`${family.id}.${rung}`)}
+                                        onChange={(next) =>
+                                            updateSpec((draft) => {
+                                                const f = draft.chromatic.families.find(
+                                                    (x) => x.id === family.id,
+                                                );
+                                                if (f) f.anchors[Number(rung)] = next;
+                                            })
+                                        }
+                                    />
+                                )),
+                            )}
+                        <AnchorField
+                            label="Grey 100"
+                            hex={spec.grey.anchor100}
+                            moves={reach.get('grey.100')}
+                            onChange={(next) => updateSpec((x) => void (x.grey.anchor100 = next))}
+                        />
+                        <AnchorField
+                            label="Grey 1000"
+                            hex={spec.grey.anchor1000}
+                            moves={reach.get('grey.1000')}
+                            onChange={(next) => updateSpec((x) => void (x.grey.anchor1000 = next))}
+                        />
+                    </div>
 
-                        <div className="flex flex-col gap-4">
-                            <h3 className="text-foreground text-xs font-semibold">
-                                What follows from them
-                            </h3>
-                            {/* Read-only, and the reason this panel keeps its heading honest:
+                    <div className="flex flex-col gap-4">
+                        <h3 className="text-foreground text-xs font-semibold">
+                            What follows from them
+                        </h3>
+                        {/* Read-only, and the reason this panel keeps its heading honest:
                                 five inputs with no shown derivation would not be "how this
                                 palette is built". The divisors named here are still in the
                                 spec — they are just edited there rather than on a slider. */}
-                            <ol className="chain [&_li]:border-b [&_li]:text-xs [&_li]:text-muted-foreground [&_li>span_em]:not-italic">
-                                <li>
-                                    <span>rung 700 &larr; the purple anchor&rsquo;s lightness</span>
-                                    <b>{d.L700.toFixed(4)}</b>
-                                </li>
-                                <li>
-                                    <span>rung 500 &larr; mean of the two brand anchors</span>
-                                    <b>{d.L500.toFixed(4)}</b>
-                                </li>
-                                <li>
-                                    <span>
-                                        low plateau step = (500 &minus; 700) /{' '}
-                                        {spec.chromatic.lowPlateauDivisor}
-                                    </span>
-                                    <b>{d.lowStep.toFixed(4)}</b>
-                                </li>
-                                <li>
-                                    <span>
-                                        rung 200 <strong>solved</strong> by contrast(700, 200) —
-                                        binding family <em>{d.rung200Witness}</em>
-                                    </span>
-                                    <b>{d.L200.toFixed(4)}</b>
-                                </li>
-                                <li>
-                                    <span>
-                                        high plateau step = (200 &minus; 500) /{' '}
-                                        {spec.chromatic.highPlateauDivisor}
-                                    </span>
-                                    <b>{d.highStep.toFixed(4)}</b>
-                                </li>
-                                <li>
-                                    <span>rung 100 = 200 + step</span>
-                                    <b>{solution.chromaticLadder[0].toFixed(4)}</b>
-                                </li>
-                            </ol>
+                        <ol className="chain [&_li]:border-b [&_li]:text-xs [&_li]:text-muted-foreground [&_li>span_em]:not-italic">
+                            <li>
+                                <span>rung 700 &larr; the purple anchor&rsquo;s lightness</span>
+                                <b>{d.L700.toFixed(4)}</b>
+                            </li>
+                            <li>
+                                <span>rung 500 &larr; mean of the two brand anchors</span>
+                                <b>{d.L500.toFixed(4)}</b>
+                            </li>
+                            <li>
+                                <span>
+                                    low plateau step = (500 &minus; 700) /{' '}
+                                    {spec.chromatic.lowPlateauDivisor}
+                                </span>
+                                <b>{d.lowStep.toFixed(4)}</b>
+                            </li>
+                            <li>
+                                <span>
+                                    rung 200 <strong>solved</strong> by contrast(700, 200) — binding
+                                    family <em>{d.rung200Witness}</em>
+                                </span>
+                                <b>{d.L200.toFixed(4)}</b>
+                            </li>
+                            <li>
+                                <span>
+                                    high plateau step = (200 &minus; 500) /{' '}
+                                    {spec.chromatic.highPlateauDivisor}
+                                </span>
+                                <b>{d.highStep.toFixed(4)}</b>
+                            </li>
+                            <li>
+                                <span>rung 100 = 200 + step</span>
+                                <b>{solution.chromaticLadder[0].toFixed(4)}</b>
+                            </li>
+                        </ol>
 
-                            {/*
+                        {/*
                                One line, not a third copy of the table.
 
                                `Rules & audit` already lists all seven with signed slack and
@@ -195,40 +190,39 @@ export function EngineRules() {
                                here whether you broke something, without leaving the screen.
                                Anything more than the count would be duplication.
                             */}
-                            <p className="text-xs">
-                                {violated.length ? (
-                                    <span className="text-destructive">
-                                        {violated.length} of {constraints.length} rules broken —{' '}
-                                        {violated.map((c) => c.id).join(', ')}
-                                    </span>
-                                ) : (
-                                    <span className="text-muted-foreground">
-                                        All {constraints.length} rules hold
-                                        {binding.length > 0 && (
-                                            <>
-                                                {' · '}
-                                                <span className="text-foreground font-medium">
-                                                    {binding.length} with no slack
-                                                </span>
-                                            </>
-                                        )}
-                                    </span>
-                                )}
-                                <span className="text-muted-foreground">
-                                    {' '}
-                                    · the slack and the witness for each are on Rules &amp; audit
+                        <p className="text-xs">
+                            {violated.length ? (
+                                <span className="text-destructive">
+                                    {violated.length} of {constraints.length} rules broken —{' '}
+                                    {violated.map((c) => c.id).join(', ')}
                                 </span>
-                            </p>
-                        </div>
+                            ) : (
+                                <span className="text-muted-foreground">
+                                    All {constraints.length} rules hold
+                                    {binding.length > 0 && (
+                                        <>
+                                            {' · '}
+                                            <span className="text-foreground font-medium">
+                                                {binding.length} with no slack
+                                            </span>
+                                        </>
+                                    )}
+                                </span>
+                            )}
+                            <span className="text-muted-foreground">
+                                {' '}
+                                · the slack and the witness for each are on Rules &amp; audit
+                            </span>
+                        </p>
+                    </div>
 
-                        {/* Reachable whenever the panel is open — the one destructive control
+                    {/* Reachable whenever the panel is open — the one destructive control
                             on the page, so it sits at the bottom of the fold rather than beside
                             the wall. */}
-                        <div className="self-start">
-                            <ResetEverything />
-                        </div>
-                    </CardContent>
-                </Card>
+                    <div className="self-start">
+                        <ResetEverything />
+                    </div>
+                </div>
             </div>
         </details>
     );

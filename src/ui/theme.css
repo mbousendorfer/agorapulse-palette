@@ -1,7 +1,16 @@
 /**
- * The theme: shadcn's stock theme, plus FIVE measured achromatic deviations.
+ * The theme: shadcn's stock theme, plus SEVEN deviations — five measured, two by design.
  *
- * ## The five deviations, and what each one bought
+ * ## The seven deviations, and what each one bought
+ *
+ * Five of the seven move LIGHTNESS ONLY and are argued from measured contrast; they are marked
+ * `DEVIATION n/7` at their token. The other two are shape and voice, and they are the ones a
+ * reader should be suspicious of, so they are argued at length where they sit:
+ *
+ *   `--font-mono`   stock leaves it unset, which shipped a different typeface per platform for
+ *                   the one grid this app exists to show. See `main.tsx`, by the imports.
+ *   `--radius`      10px is soft beside a plate of square colour samples, and the plate cannot
+ *                   be rounded. 6px, and the reasoning is on the token.
  *
  * This file said "stock, unmodified", and that claim is retired rather than quietly broken.
  * Every deviation is **chroma 0**, so the argument further down about a hue-free chrome is
@@ -211,7 +220,7 @@
     --secondary-foreground: oklch(0.205 0 0);
     --muted: oklch(0.97 0 0);
     --muted-foreground: oklch(0.556 0 0); /* #737373 — 4.74:1 on card, 4.35:1 on muted */
-    /* DEVIATION 1/5. Stock is 0.97 — identical to `--muted` and `--secondary`, so every
+    /* DEVIATION 1/7. Stock is 0.97 — identical to `--muted` and `--secondary`, so every
        selected or hovered fill measured 1.00:1 against its own ground. 0.91 measures
        1.20:1 on `--muted` and 1.31:1 on the card, with ink at 13.71:1. */
     --accent: oklch(0.91 0 0);
@@ -219,7 +228,7 @@
     --destructive: oklch(0.577 0.245 27.325); /* the only chromatic token here */
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
-    /* DEVIATION 2/5. Stock 0.708 is 2.59:1 on the card at full strength and 1.54:1 through
+    /* DEVIATION 2/7. Stock 0.708 is 2.59:1 on the card at full strength and 1.54:1 through
        the 50% alpha every focus indicator draws it at. 0.50 is 6.00:1. */
     --ring: oklch(0.5 0 0);
     /* All five are greys. Nothing here uses them: the palette under test may not paint the
@@ -229,12 +238,18 @@
     --chart-3: oklch(0.439 0 0);
     --chart-4: oklch(0.371 0 0);
     --chart-5: oklch(0.269 0 0);
-    --radius: 0.625rem;
+    /* DEVIATION 7/7. Stock is 0.625rem — 10px, which on a 28px control is close to a pill and
+       reads soft beside a plate of square samples. The plate cannot be rounded (a radius on a
+       continuous hairline field leaves a diamond of ground at every intersection), so the
+       shape language is set by the samples and everything else follows them down. 6px keeps a
+       control legible as a control while agreeing with the field it sits above. Multiplicative
+       scale, so the tiers stay in proportion: sm 3.6px, md 4.8px, lg 6px. */
+    --radius: 0.375rem;
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.145 0 0);
     --sidebar-primary: oklch(0.205 0 0);
     --sidebar-primary-foreground: oklch(0.985 0 0);
-    /* DEVIATION 3/5. Same reason as `--accent`, on the rail's scale. Nothing in this app
+    /* DEVIATION 3/7. Same reason as `--accent`, on the rail's scale. Nothing in this app
        uses a sidebar any more, and it moves with its twin so the pair cannot drift. */
     --sidebar-accent: oklch(0.91 0 0);
     --sidebar-accent-foreground: oklch(0.205 0 0);
@@ -257,16 +272,16 @@
     --secondary-foreground: oklch(0.985 0 0);
     --muted: oklch(0.269 0 0);
     --muted-foreground: oklch(0.708 0 0);
-    /* DEVIATION 1/5, dark half. Stock 0.269 is `--muted` exactly; 0.34 measures 1.29:1. */
+    /* DEVIATION 1/7, dark half. Stock 0.269 is `--muted` exactly; 0.34 measures 1.29:1. */
     --accent: oklch(0.34 0 0);
     --accent-foreground: oklch(0.985 0 0);
     --destructive: oklch(0.704 0.191 22.216);
     --border: oklch(1 0 0 / 10%); /* translucent, not a colour */
-    /* DEVIATION 4/5. Still translucent, so it still composites over what is behind it —
+    /* DEVIATION 4/7. Still translucent, so it still composites over what is behind it —
        only the alpha moved, 15% to 30%. This is the segmented pill's only edge in dark
        mode: 1.62:1 against the track before, 2.68:1 now. */
     --input: oklch(1 0 0 / 30%);
-    /* DEVIATION 2/5, dark half. 4.18:1 at full strength, 1.87:1 through the alpha. */
+    /* DEVIATION 2/7, dark half. 4.18:1 at full strength, 1.87:1 through the alpha. */
     --ring: oklch(0.72 0 0);
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
@@ -277,7 +292,7 @@
     --sidebar-foreground: oklch(0.985 0 0);
     --sidebar-primary: oklch(0.488 0.243 264.376); /* a blue, and nothing here uses it */
     --sidebar-primary-foreground: oklch(0.985 0 0);
-    /* DEVIATION 3/5, dark half. */
+    /* DEVIATION 3/7, dark half. */
     --sidebar-accent: oklch(0.34 0 0);
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
@@ -334,20 +349,29 @@
     --color-sidebar-ring: var(--sidebar-ring);
 
     /*
-       Stock declares only `--font-sans` (Geist, which `shadcn init` vendors) and
-       `--font-heading` aliased to it. There is deliberately NO `--font-mono` here: leaving it
-       unset lets Tailwind's own stack apply, `ui-monospace, SFMono-Regular, Menlo, …`, which
-       is a real monospace and keeps the palette wall's 66 hex read-outs in columns. Declaring
-       one would be a theme customisation for no gain.
+       DEVIATION 6/7: two declared faces, and `--font-mono` is the deviation.
 
-       No `--shadow-*` either, for the same reason. Tailwind defines the whole scale, and the
-       one rule in `app.css` that reads a shadow variable — `.swatch:hover` — now resolves
-       `var(--shadow-lg)` to Tailwind's `0 10px 15px -3px rgb(0 0 0 / 0.1), …`. Verified that
-       it is defined rather than assumed; a stock theme that silently deleted the hover
-       elevation would have been a quiet regression.
+       Stock declares `--font-sans` (Geist) and `--font-heading` aliased to it, and leaves
+       `--font-mono` unset so Tailwind's `ui-monospace, SFMono-Regular, Menlo, …` applies. The
+       old note here called declaring one "a theme customisation for no gain". The gain it
+       missed: `ui-monospace` resolves to a DIFFERENT TYPEFACE per platform, and the grid it
+       renders — 66 aligned hex read-outs, plus L/C/h to four decimals in the inspector — is
+       this app's primary surface. Unset meant shipping SF Mono to a Mac, Consolas to Windows
+       and DejaVu to Linux. The full argument is in `main.tsx`, next to the imports.
+
+       Archivo carries the interface, Azeret Mono carries every number. `--font-heading` stays
+       aliased to sans: there is no third voice, and two headings do not want a display face
+       when the mono is already doing the characterful work.
+
+       No `--shadow-*` here, and that reasoning is unchanged. Tailwind defines the whole scale,
+       and the rules in `app.css` that read one — the swatch's hover and focus states — resolve
+       `var(--shadow-lg)` to Tailwind's `0 10px 15px -3px rgb(0 0 0 / 0.1), …`. Verified that it
+       is defined rather than assumed; a stock theme that silently deleted the hover elevation
+       would have been a quiet regression.
     */
     --font-heading: var(--font-sans);
-    --font-sans: 'Geist Variable', sans-serif;
+    --font-sans: 'Archivo Variable', sans-serif;
+    --font-mono: 'Azeret Mono Variable', ui-monospace, monospace;
 }
 
 /*
@@ -383,7 +407,7 @@
 }
 
 /*
-  DEVIATION 5/5: a focus indicator that is actually visible.
+  DEVIATION 5/7: a focus indicator that is actually visible.
 
   The rule above sets outline COLOUR only, at 50% alpha, and leaves width and style to the
   UA. Measured across the whole lightness range, that alpha cannot clear 1.4.11's 3:1 in

@@ -27,7 +27,6 @@
 
 import { useMemo, useState } from 'react';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Segmented, SegmentedItem } from './Segmented';
 
 import { buildGroupTree, flattenGroups, groupOf, labelAfterGroup } from '../model/groups';
@@ -230,7 +229,21 @@ function rowsOf(collection: Collected): Row[] {
             depth: 0,
             note: `${singles.length} fixed`,
             tokens: singles,
-            heads: [],
+            /*
+               The FULL short name here, not `headOf`'s last segment.
+
+               `headOf` takes the segment after the last dash, which is right on every other
+               row in this card: the row label carries the family, so `grey` + `100` reads as
+               one name split across two places. This row is the exception and it is the only
+               one — `one-off` collects the colours that share no prefix with anything, so
+               there is no row label to carry the missing half.
+
+               What that cost, on screen: fourteen of the twenty-seven tiles were labelled
+               `100`, and two different gradient tokens both read `gradientF`. Twenty-seven
+               fixed colours, most of them unidentifiable, in a card whose whole job is to let
+               you check a name against a colour.
+            */
+            heads: singles.map(shortName),
             ladder: false,
         });
     }
@@ -260,16 +273,21 @@ export function FigmaPalettes() {
     const columns = Math.max(1, ...rows.filter((r) => r.ladder).map((r) => r.tokens.length));
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>What Figma says</CardTitle>
-                <CardDescription>
-                    The three variable collections as exported, for reference — never merged into
-                    the palette above. Run <code className="font-mono">npm run figma</code> after a
-                    new export.
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4">
+        <section className="bench">
+            <span className="bench-index" aria-hidden>
+                02
+            </span>
+            <h2 className="bench-title">What Figma says</h2>
+            {/* The `npm run figma` instruction that used to close this sentence is gone.
+                Re-vendoring the export is a repo operation and the README documents it;
+                printed here it read as a step the reader was expected to take now, in a
+                section whose subject is what the colours say. What stays is the two facts
+                about the data — the count and the mode — which the row below carries. */}
+            <p className="bench-note">
+                The variable collections as exported, for reference — never merged into the palette
+                above.
+            </p>
+            <div className="bench-body flex flex-col gap-4">
                 {/*
                    The collection switch is gone with the collections it switched between.
 
@@ -360,7 +378,7 @@ export function FigmaPalettes() {
                         </div>
                     </div>
                 ))}
-            </CardContent>
-        </Card>
+            </div>
+        </section>
     );
 }

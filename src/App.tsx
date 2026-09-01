@@ -74,6 +74,62 @@ export function App() {
         });
     }, []);
 
+    /*
+       Undo and redo, on the shortcut everybody already has in their hands.
+
+       Registered on `window` rather than on the wall, because what it undoes is not a wall
+       action: an anchor typed into "How this palette is built", a family added in the dialog
+       and a slider dragged in the inspector all land in the same one-object spec, so one
+       listener at the top is the honest place for it.
+
+       TEXT ENTRY is skipped, and only text entry — which is narrower than the `INPUT|TEXTAREA`
+       tag test the wall's `Escape` handler uses, deliberately. In a field you are typing into,
+       the browser's own undo is the right behaviour and stealing it would make retyping a hex
+       un-take-backable. A RANGE input has no such undo, and it is the single most likely thing
+       to hold focus at the moment you want this: you drag the lightness handle, you do not like
+       where it went, and your hand is already on the shortcut. Skipping it by tag name meant
+       Ctrl+Z did nothing until you clicked somewhere else first — which is how this was found,
+       by pressing it after a real drag rather than by reading the guard.
+
+       The same goes for `color`, `checkbox` and the rest: none of them accept typing, so none
+       of them has a native undo to protect.
+    */
+    useEffect(() => {
+        const TYPED = /^(text|search|url|email|password|tel|number)$/;
+        const onKey = (e: KeyboardEvent) => {
+            if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+            if (e.key.toLowerCase() !== 'z') return;
+            const t = e.target as HTMLElement | null;
+            const typing =
+                t &&
+                (t.isContentEditable ||
+                    t.tagName === 'TEXTAREA' ||
+                    (t.tagName === 'INPUT' && TYPED.test((t as HTMLInputElement).type || 'text')));
+            if (typing) return;
+            e.preventDefault();
+            const { undo, redo, past, future, say } = useStore.getState();
+            /*
+               Announced, and the announcement is the point rather than politeness.
+
+               An undo here can move up to 49 of the 66 shades at once, and on a wall of
+               colour that reads as "something happened" without saying what. It is also the
+               only feedback that the stack has run out — a shortcut that silently does
+               nothing is indistinguishable from one that is not wired up.
+            */
+            if (e.shiftKey) {
+                if (future.length === 0) return say('Nothing to redo');
+                redo();
+                say('Redone');
+            } else {
+                if (past.length === 0) return say('Nothing to undo');
+                undo();
+                say('Undone');
+            }
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, []);
+
     const storageBroken = useStore((s) => s.storageBroken);
     useEffect(() => {
         if (!storageBroken) return;
@@ -87,17 +143,14 @@ export function App() {
 
     return (
         <div className="shell">
+            {/* A fixed top bezel and a fixed bottom read-out, with the bench scrolling between
+                them. Both are GRID ROWS of the shell rather than sticky children of the
+                scroller, which is the cheaper mechanism and the more honest one: the frame is
+                not part of the document being scrolled, so it needs no backdrop trickery, it
+                cannot be scrolled past, and it bounds the scroll viewport — which is what stops
+                the shade inspector's `scrollIntoView` from parking a panel underneath it. */}
+            <Masthead />
             <main className="workspace">
-                <header className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                        <div className="text-sm font-semibold">Agorapulse Palette</div>
-                        <div className="text-muted-foreground text-xs">
-                            Five anchors, 66 shades, solved
-                        </div>
-                    </div>
-                    <ThemeControl />
-                </header>
-
                 <RestoreNotice />
                 <PaletteWall />
                 {/* What design says, under what the engine says. A sibling of the wall rather
@@ -108,6 +161,132 @@ export function App() {
             <StatusBar />
             <Toast />
         </div>
+    );
+}
+
+/**
+ * The bezel: what this is, what the solver is saying, and the light.
+ *
+ * The header used to be the first item inside the scrolling workspace, carrying the name, the
+ * line "Five anchors, 66 shades, solved", and the theme control. Three things were wrong with
+ * that and only one of them was visual.
+ *
+ * The tagline was PROSE STATING A DERIVED FACT — hardcoded "Five" and "66" on the one page
+ * whose entire claim is that its numbers are computed. `PaletteWall` had already been through
+ * this exact fix internally, counting `anchorCount` from the spec because "'66 shades', 'Five
+ * anchors' and 'seven hues' all went stale the moment you used Add a colour". The header was
+ * the copy that got missed. It is a live read-out now, so it cannot go stale.
+ *
+ * The theme control scrolled away, on the app whose whole subject is what a hue looks like
+ * against a given ground. Switching ground is a thing you do WHILE looking, so the control has
+ * to stay where the looking happens.
+ *
+ * And a header that scrolls is a page. A frame that does not is an instrument.
+ */
+function Masthead() {
+    return (
+        <header className="bezel border-b">
+            <div className="bezel-mark">
+                <span className="bezel-name text-sm font-semibold">Agorapulse Palette</span>
+                <span className="bezel-tick" aria-hidden />
+                <SolverReadout />
+            </div>
+            <ThemeControl />
+        </header>
+    );
+}
+
+/**
+ * The solver, out loud.
+ *
+ * This is `StatusBar`'s `rules` group promoted to the bezel, not copied into it — the bar below
+ * no longer carries the constraints. That split is editorial rather than cosmetic: what belongs
+ * up here is the state of the PALETTE, which changes under your hands and is the reason to look
+ * up; what stays down there is the state of the SESSION and of the vendored token graph, which
+ * changes rarely and is reference. This codebase already refuses to state one fact in two
+ * places, and moving beats duplicating.
+ *
+ * The per-field subscription and the memo are carried over from `StatusBar` wholesale, and the
+ * reasoning with them, because the cost is unchanged and the failure would be silent:
+ * `evaluateConstraints` is ~30 `contrastHex` calls across every family. Subscribing to the
+ * whole store (`useStore(s => s)`) re-runs it on every field including `dragging` and `toast`,
+ * which during an anchor drag is a second full constraint evaluation per frame on top of the
+ * palette solve — for a strip of text that only two fields can change.
+ *
+ * No `aria-live`. It updates per pointer move while a slider is held, and a live region that
+ * fires a few hundred times per gesture is worse than silence. Events get announced by the
+ * toast, which is where an announcement belongs.
+ */
+function SolverReadout() {
+    const spec = useStore((s) => s.spec);
+    const solution = useStore((s) => s.solution);
+
+    const constraints = useMemo(() => evaluateConstraints(spec, solution), [spec, solution]);
+    const violated = constraints.filter((c) => c.status === 'violated').length;
+    const binding = constraints.filter((c) => c.status === 'binding').length;
+
+    return (
+        <div className="readout">
+            <Gauge
+                value={solution.rungs.size}
+                unit="shades"
+                title="Every shade the engine re-derives on each edit"
+            />
+            {violated > 0 ? (
+                <Gauge
+                    value={violated}
+                    unit={violated === 1 ? 'rule broken' : 'rules broken'}
+                    tone="bad"
+                    title={`${violated} of the ${constraints.length} rules the palette is seated on no longer hold`}
+                />
+            ) : (
+                <Gauge
+                    value={constraints.length}
+                    unit="rules hold"
+                    title="Every constraint the palette is seated on is satisfied"
+                />
+            )}
+            {/* Only when there is slack to report. A permanent "0 with no slack" is a gauge
+                reading zero, which is noise; its absence is the good news. */}
+            {binding > 0 && violated === 0 && (
+                <Gauge
+                    value={binding}
+                    unit="with no slack"
+                    tone="warn"
+                    title={`${binding} of them have zero slack: the next nudge in that direction breaks the palette`}
+                />
+            )}
+        </div>
+    );
+}
+
+/**
+ * One reading: the figure in mono, what it counts in words beside it.
+ *
+ * Three tones, and they are the house set rather than three hues — the theme has exactly one
+ * chromatic token and this app may not invent a second, because every colour in its chrome is a
+ * ground somebody is judging a hue against. So: quiet is muted ink, `warn` is FULL-STRENGTH ink
+ * (look here), `bad` is the one red stock provides.
+ */
+function Gauge({
+    value,
+    unit,
+    tone,
+    title,
+}: {
+    value: number;
+    unit: string;
+    tone?: 'warn' | 'bad';
+    title: string;
+}) {
+    return (
+        <span
+            className={cn('gauge', tone === 'bad' && 'is-bad', tone === 'warn' && 'is-warn')}
+            title={title}
+        >
+            <b className="gauge-v font-mono">{value}</b>
+            <span className="gauge-k">{unit}</span>
+        </span>
     );
 }
 
@@ -223,7 +402,12 @@ function Toast() {
                     : 'bg-foreground text-background',
                 reject && 'reject',
             )}
-            role="status"
+            /* A refusal is an ALERT; everything else is a status. `role="status"` is polite —
+               a screen reader finishes what it is saying and may never reach it. Right for
+               "#7ab6fe copied", which only confirms something you just did; wrong for
+               "Rejected: no grey scale satisfies contrast(800, 200) at that anchor", which is
+               the only notice that the edit you asked for did not happen. */
+            role={reject ? 'alert' : 'status'}
         >
             {toast}
         </div>
@@ -265,57 +449,50 @@ function ThemeControl() {
     );
 }
 
+/**
+ * The bottom read-out: the session, the snapshot, and the edge of the colour space.
+ *
+ * The `rules` group and the shade count that used to lead this bar are in the bezel now — see
+ * `SolverReadout`. What is left is everything that is NOT about the palette you are editing,
+ * which turns out to be a coherent set: how the vendored token graph loaded, whether your work
+ * is being saved, and where the palette is pressed against sRGB.
+ *
+ * The gamut count is new here, and it is a fact the app already computed and never showed. Every
+ * ladder rung carries `gamutLimited` — the chroma it asked for is outside sRGB, so the value on
+ * screen is clamped — and the wall marks each one with a corner notch. The notch answers "is
+ * THIS shade clamped"; nothing answered "how much of the palette is against the wall", which is
+ * the question you have while turning a chroma knob and watching nothing happen.
+ */
 function StatusBar() {
-    const spec = useStore((s) => s.spec);
     const solution = useStore((s) => s.solution);
     /**
      * Per-field, not `useStore((s) => s)`.
      *
      * Zustand's `set` always produces a new root object, so subscribing to the whole state
-     * re-rendered this bar on EVERY change — including `dragging` and `toast` — and each of
-     * those renders re-ran `evaluateConstraints`, which is ~30 `contrastHex` calls across every
-     * family. During an anchor drag that was a second full constraint evaluation per frame, on
-     * top of the palette solve, for a strip of text only two of those fields can change.
+     * re-rendered this bar on EVERY change — including `dragging` and `toast`. That mattered
+     * most while this bar owned `evaluateConstraints`; the reasoning is now in
+     * `SolverReadout`, which inherited both the call and the cost. It still holds here: the
+     * gamut tally below walks all 66 rungs, and a bar that re-renders per pointer move would
+     * walk them per frame.
      */
     const edits = useStore(paletteEditCount);
     const storageBroken = useStore((s) => s.storageBroken);
 
-    const constraints = useMemo(() => evaluateConstraints(spec, solution), [spec, solution]);
-    const violated = constraints.filter((c) => c.status === 'violated').length;
-    const binding = constraints.filter((c) => c.status === 'binding').length;
-    const ok = constraints.length - violated - binding;
+    const clamped = useMemo(
+        () =>
+            [...solution.rungs.values()].filter(
+                (r) => r.provenance.kind === 'ladder' && r.provenance.gamutLimited,
+            ).length,
+        [solution],
+    );
 
     return (
         <div className="statusbar bg-card text-muted-foreground border-t text-xs">
-            {/* "5 ok · 2 binding · 0 violated" named three states and explained none. What you
-                need at a glance is whether the palette still holds; `binding` — zero slack, so
-                the next nudge breaks it — is the one word that has to carry its own meaning. */}
-            <span className="status-group">
-                <span className="status-label text-muted-foreground text-xs font-medium">
-                    rules
-                </span>
-                {violated > 0 ? (
-                    <span className="text-destructive">{violated} broken</span>
-                ) : (
-                    <span className="text-primary">all {ok + binding} hold</span>
-                )}
-                {binding > 0 && (
-                    <span
-                        className="text-foreground"
-                        title={`${binding} of them have zero slack: the next nudge in that direction breaks the palette`}
-                    >
-                        · {binding} with no slack
-                    </span>
-                )}
-            </span>
-            <Separator orientation="vertical" className="h-4" />
             {/* Two different claims, stated separately — the lab learned this the hard way from
                 a bare `✓` that meant "the token graph has no cycles" and read as "this snapshot
                 is current". There is no sync in this tool, so only the first is checkable. */}
             <span className="status-group" title="Cycles and dangling aliases in the token graph">
-                <span className="status-label text-muted-foreground text-xs font-medium">
-                    tokens
-                </span>
+                <span className="status-label">tokens</span>
                 {graph.diagnostics.length > 0 ? (
                     <span className="text-destructive">
                         {graph.diagnostics.length} graph issue
@@ -325,11 +502,23 @@ function StatusBar() {
                     <span>{graph.nodes.size} loaded, no issues</span>
                 )}
             </span>
-            <Separator orientation="vertical" className="h-4" />
+            <Separator orientation="vertical" className="h-3" />
+            <span
+                className="status-group"
+                title="Rungs whose chroma is limited by the sRGB gamut rather than by the envelope. Turning the chroma knob will not move these."
+            >
+                <span className="status-label">gamut</span>
+                {clamped === 0 ? (
+                    <span>all inside sRGB</span>
+                ) : (
+                    <span>
+                        {clamped} of {solution.rungs.size} clamped
+                    </span>
+                )}
+            </span>
+            <Separator orientation="vertical" className="h-3" />
             <span className="status-group" title="Departures from the shipped palette">
-                <span className="status-label text-muted-foreground text-xs font-medium">
-                    your session
-                </span>
+                <span className="status-label">session</span>
                 {edits === 0 ? (
                     <span>nothing changed yet</span>
                 ) : (
@@ -347,8 +536,13 @@ function StatusBar() {
                 )}
             </span>
             <span className="status-spacer" />
-            <span title="The engine re-derives all 66 shades on every edit">
-                {solution.rungs.size} shades solved
+            {/* The space the whole thing is reasoned in, which is the one piece of standing
+                context this bar can carry that is not a live value. */}
+            <span
+                className="status-note"
+                title="The ladder is a ladder in OKLab: equal steps are equal perceptual steps"
+            >
+                oklch ladder · sRGB output
             </span>
         </div>
     );

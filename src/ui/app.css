@@ -187,14 +187,20 @@ body {
    Migration, Rules & audit, Diff & export. Five of the six were the migration workbench, so a
    rail here would be a single item pointing at the page you are already on.
 
-   The rows stay: a scrolling page above a fixed 34px status bar. The bar has to be a grid row
-   rather than a sticky footer because it is a fixed height that text must not wrap inside —
-   see `.statusbar`.
+   THREE rows now: a fixed bezel, the scrolling bench, a fixed read-out. Both frames are grid
+   rows rather than `position: sticky` children of the scroller, and that is the cheaper
+   mechanism as well as the more honest one — a sticky header is part of the document it floats
+   over, so it needs a backdrop to stay legible and it still shares the scroll viewport. As rows
+   they BOUND that viewport, which is what stops the shade inspector's `scrollIntoView` from
+   parking a panel underneath the bezel.
+
+   The status bar has to be a fixed height because text must not wrap inside it — see
+   `.statusbar`.
 */
 .shell {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr) 34px;
+    grid-template-rows: auto minmax(0, 1fr) 34px;
     /*
        `dvh`, with `100%` underneath it for anything that does not know the unit.
 
@@ -229,11 +235,145 @@ body {
     overflow: auto;
     padding: 24px 24px 48px;
     min-width: 0;
+    /*
+       A thin, achromatic scrollbar, and the second value is the reason for the first.
+
+       The UA scrollbar on a dark page is a light grey slab about 15px wide running the full
+       height of the bench, a few pixels from the palette. It is the largest single area of
+       not-under-test colour on screen. `scrollbar-color` takes two values and both have to be
+       said: the thumb from `--border`, and the TRACK as `transparent`, or the UA supplies its
+       own and the slab is still there.
+
+       Not hidden. The status bar's own hidden scrollbar is a documented mistake in this file —
+       it made the bar's overflow undiscoverable — and the bench is the one thing on this page
+       that genuinely scrolls.
+    */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
 }
+
+/*
+   Selection, in the theme's own accent rather than the UA's blue.
+
+   The default is a saturated system blue, which on this page is a colour nobody chose sitting
+   next to 66 that somebody did. `--accent` is achromatic by construction, so a selected hex
+   reads as selected without introducing a hue to compare against.
+*/
+::selection {
+    background: var(--accent);
+    color: var(--accent-foreground);
+}
+
+/*
+   NO `scroll-behavior: smooth` here, and it is worth saying why not.
+
+   That was tried, so that `PaletteWall`'s `scrollIntoView` could animate without naming an
+   animation in JS. It reintroduced the bug it was helping to fix: smooth scrolling can be
+   declined — measured in one engine, where the identical call moved 384px with the default
+   behaviour and 0px with `smooth` — and what the call delivers is not decoration, it is the
+   inspector's sliders and its reason field being reachable at all.
+
+   So the scroll is instant and unconditional. `block: 'nearest'` already moves the minimum
+   distance, the panel's own `pop-in` covers the jump, and an instant scroll is what
+   `prefers-reduced-motion` would have asked for anyway.
+*/
 
 /* Flex children shrink to their content by default; these two must not. */
 .workspace > [data-slot='table-container'] {
     min-width: 0;
+}
+
+/* ------------------------------------------------------------------ bezel --- */
+
+/*
+   The top frame: what this is, what the solver says, and the light.
+
+   Flat on `--background` with a single hairline under it, and no tonal step. That is the
+   discipline this whole file runs on: every surface here is a ground somebody is judging a hue
+   against, so the frame may not introduce a second tone to compare against, let alone a tint.
+   What separates the bezel from the bench is a 1px line and 48px of air, which is enough.
+*/
+.bezel {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s4);
+    height: 48px;
+    padding: 0 var(--s5);
+    background: var(--background);
+}
+
+.bezel-mark {
+    display: flex;
+    align-items: center;
+    gap: var(--s3);
+    min-width: 0;
+}
+
+.bezel-name {
+    letter-spacing: -0.011em;
+    white-space: nowrap;
+}
+
+/* A hairline, not a bullet or a slash. It divides the NAME from the reading, which is the same
+   job the rules inside the plate do — one vocabulary for one idea. */
+.bezel-tick {
+    flex: none;
+    width: 1px;
+    height: 14px;
+    background: var(--border);
+}
+
+/*
+   The live reading. Clipped rather than wrapped: the bezel is a fixed 48px and a second line
+   inside it would either overflow or push the theme control, and the gauges are ordered so the
+   one that gets cut first is the least urgent.
+*/
+.readout {
+    display: flex;
+    align-items: baseline;
+    gap: var(--s4);
+    min-width: 0;
+    overflow: hidden;
+}
+
+.gauge {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.gauge-v {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+    color: var(--foreground);
+}
+
+.gauge-k {
+    font-size: 11.5px;
+    color: var(--muted-foreground);
+}
+
+/*
+   Two states above quiet, and neither is a new hue.
+
+   The theme carries exactly one chromatic token, so a third colour is not available and would
+   not be wanted: `is-warn` is the KEY coming up to full-strength ink at 500, which is this
+   codebase's own rule — hierarchise by weight and ink, never by dropping text into a lighter
+   grey — and `is-bad` is the one red stock provides.
+*/
+.gauge.is-warn .gauge-k {
+    color: var(--foreground);
+    font-weight: 500;
+}
+
+.gauge.is-bad .gauge-v,
+.gauge.is-bad .gauge-k {
+    color: var(--destructive);
 }
 
 .statusbar {
@@ -241,8 +381,13 @@ body {
     grid-column: 1 / -1;
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding: 0 16px;
+    gap: var(--s4);
+    padding: 0 var(--s5);
+    /* Every value in this bar is a figure or a count, and they sit under 66 columns of mono.
+       One face for prose, one for data, and this bar is data. */
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.005em;
     /*
      * The bar sits in a fixed-height grid row, so text that wraps is text that is cut in
      * half. Below roughly 1150px the four groups genuinely do not fit — measured at
@@ -310,11 +455,123 @@ input[type='range'] {
     width: 100%;
 }
 
+/*
+   A range whose track IS the colour it controls.
+
+   `ChannelField` sets `--track` to a gradient built by sweeping that one channel; this rule is
+   what paints it. Only the colours come from React — the geometry lives here, so a change to
+   the track's height or radius is one edit rather than six call sites.
+
+   `-webkit-slider-runnable-track` and `-moz-range-track` are the two vendor pseudo-elements
+   that reach the track; they cannot be combined into one selector list, because a browser that
+   does not recognise one of them discards the WHOLE rule. Hence the duplication.
+
+   `accent-color` is left in place above and does the thumb. That is deliberate: the thumb is
+   the position marker, and a marker tinted to match the track it sits on stops marking
+   anything. It also means the handle keeps the app's own focus/hover treatment for free.
+
+   The inset edge is the same trick the swatches use — a pale gradient on a pale surface, and a
+   dark one on a dark surface, both need a boundary of their own to read as a track.
+*/
+.has-track {
+    /* The UA track paint has to go, or it composites over the gradient in Chrome. */
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    height: 1.25rem;
+}
+
+.has-track::-webkit-slider-runnable-track {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--track);
+    box-shadow:
+        inset 0 0 0 1px rgb(0 0 0 / 0.14),
+        inset 0 0 0 1px rgb(255 255 255 / 0.1);
+}
+
+.has-track::-moz-range-track {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--track);
+    box-shadow:
+        inset 0 0 0 1px rgb(0 0 0 / 0.14),
+        inset 0 0 0 1px rgb(255 255 255 / 0.1);
+}
+
+/*
+   Taking `appearance: none` off the input takes the THUMB with it in WebKit, so it has to be
+   drawn back. Firefox keeps its own thumb from `accent-color` and needs only the ring, which is
+   why `-moz-range-thumb` sets fewer properties.
+
+   A white core with a dark ring, so the handle reads on every colour a track can hold — the
+   same two-tone reasoning as the swatch focus ring, for the same reason: what it must contrast
+   with is arbitrary.
+*/
+.has-track::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    margin-top: -3px;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow:
+        0 0 0 1px rgb(0 0 0 / 0.55),
+        0 1px 2px rgb(0 0 0 / 0.35);
+    cursor: grab;
+}
+
+.has-track::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border: 0;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow:
+        0 0 0 1px rgb(0 0 0 / 0.55),
+        0 1px 2px rgb(0 0 0 / 0.35);
+    cursor: grab;
+}
+
 /* --------------------------------------------------------- palette wall ---- */
 
+/*
+   THE PLATE.
+
+   The wall used to be 66 rounded tiles floating in a 3-4px gutter — the grid-of-cards pattern,
+   which is what every dashboard looks like and what no colour reference has ever looked like.
+   A Pantone page, a Munsell chip array, a chromatography plate: the samples ABUT, separated by
+   the thinnest line the medium can hold, because the whole point is comparing two colours with
+   nothing between them. Air between chips is air you have to look across.
+
+   So the gutter is 1px and the grid's own background is `--border`, which means the gutters ARE
+   the hairlines — one declaration draws every rule in the field, and it cannot fall out of step
+   with the row and column counts because it does not know them.
+
+   Three consequences, each handled below rather than left to chance:
+
+   The hairline is drawn by each SAMPLE, as a 1px outset ring, rather than by painting the grid's
+   own background and letting the 1px gutters show it. Both give identical interior rules; the
+   ring also closes the plate's OUTER edge, which the background cannot. Measured in the light
+   theme, where it matters: the ground is `oklch(1 0 0)` and the palest samples are `grey-100` at
+   #f9f9fa and `menthol-100` at #effbfa, so the plate's bottom and right edges had no boundary at
+   all — the same defect the inset ring was added to fix, moved to the perimeter. Adjacent rings
+   meet inside the 1px gutter, so one declaration draws every rule in the field and it cannot
+   fall out of step with the row and column counts, because it does not know them.
+
+   Two consequences, each handled below rather than left to chance:
+
+     · The corners stay square. A radius on a continuous field fights it, and rounding the plate
+       as a whole would need `overflow: hidden`, which would clip the shade inspector — the panel
+       is absolutely positioned inside a `.swatch-cell`.
+     · `--swatch-edge`, the INSET ring added so the palest samples had a visible boundary, comes
+       off here: it spends 1px of the sample to say what the ring outside it now says for free.
+       It stays on the free-standing tiles, which have no field to bound them. See `.figma-tile`.
+*/
 .wall {
     display: grid;
-    gap: 3px;
+    gap: 1px;
     /*
        Row label + one column per rung. `--wall-cols` is written by `PaletteWall` on every
        solve, because how many rungs the widest family has is the one thing only React
@@ -330,28 +587,66 @@ input[type='range'] {
 }
 
 .wall-head {
-    text-align: center;
-    padding-bottom: 4px;
     align-self: end;
     font-variant-numeric: tabular-nums;
 }
 
-/* Names the axis once, where the eye enters the grid. Ten numbers with no unit
-   is a row of numbers; "lighter → darker" makes them a scale. */
+/* Names the axis once, where the eye enters the grid, and sits against the plate's edge with
+   the family names below it. Ten numbers with no unit is a row of numbers; "lighter → darker"
+   makes them a scale. */
 .wall-head-label {
-    text-align: left;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    padding: 0 var(--s3) 4px 0;
+    /* Sans, and it must not wrap. This is the name of an axis — prose — not a value, so it
+       belongs to the interface face; in mono it measured 110px against a 104px column and broke
+       across two lines, which pushed the graduation 24px off the plate's edge. */
+    font-family: var(--font-sans);
+    white-space: nowrap;
 }
 
-/* A hairline across the rungs, so the axis label reads as a caption on an axis
-   rather than as a stray word above the first family. It used to fade out along its
-   length, `linear-gradient(to right, var(--input), var(--border) 70%, transparent)`. The
-   fade was a nice touch and it was also a second opinion about what a hairline looks
-   like; it is `bg-border` at the call site now, so the theme decides. */
+/*
+   THE GRADUATION, and its ticks come from `--wall-cols`.
+
+   `PaletteWall` already writes that variable on every solve, because how many rungs the widest
+   family has is the one thing only React knows. So the tick pitch is `100% / var(--wall-cols)`
+   and there is exactly one tick per column, at every column boundary, for any number of rungs.
+   No second source for the count, and nothing to keep in step when a family gains a dark rung.
+
+   Ticks rather than a second row of numbers: every sample already carries its own rung — it was
+   in a header row only, and by the seventh family you were counting columns — so numbering the
+   axis would say it twice. What the axis adds is the DIRECTION and the PITCH.
+
+   This was a 1px bar, painted solid by a `bg-border` utility at the call site. Before that it
+   faded along its length, which the note here called "a second opinion about what a hairline
+   looks like". Both are gone: it is a scale now, and the theme still owns the colour.
+*/
 .wall-head-rule {
     grid-column: 2 / -1;
-    align-self: end;
-    height: 1px;
-    margin-bottom: 5px;
+    /* STRETCH, not `end`, so the ticks hang from the plate's edge whatever height the axis
+       label gives this row. `.wall-head` sets `align-self: end` for the label; inherited here it
+       made this a 10px strip floating in a taller cell. */
+    align-self: stretch;
+    min-height: 10px;
+    /*
+       TICKS ONLY. No baseline is drawn here, and that is the point rather than an omission: the
+       top rule of the first family's samples already IS the axis line, drawn by the same ring
+       every other sample carries. A baseline of its own put a second line 1px away from it.
+
+       The ticks are mixed from `--muted-foreground` rather than taken from `--border`, because
+       `--border` in the dark theme is `oklch(1 0 0 / 10%)` — right for a hairline between two
+       samples and invisible as a mark on the page ground. Measured on screen: the graduation was
+       simply not there. A graduation has to be a shade stronger than the grid it graduates.
+    */
+    background-image: repeating-linear-gradient(
+        to right,
+        color-mix(in oklab, var(--muted-foreground) 55%, transparent) 0 1px,
+        transparent 1px calc(100% / var(--wall-cols, 10))
+    );
+    background-size: 100% 5px;
+    background-position: 0 100%;
+    background-repeat: no-repeat;
 }
 
 .wall-family {
@@ -386,16 +681,49 @@ input[type='range'] {
     /* Not a theme colour: `--swatch` is the solved palette colour under test, set
        inline per swatch. The fallback only shows if that inline value is missing. */
     background: var(--swatch, #333);
+
+    /*
+       An edge, so the sample's EXTENT is visible whatever colour it holds — DECLARED here,
+       APPLIED only where there is no grid to do the job.
+
+       A sample with no boundary fails at both ends of the scale and fails hardest where it
+       matters most. Measured: in the light theme the page and the cards are `oklch(1 0 0)`, so
+       `grey-100` (#f9f9fa) and the literal `white` had no visible boundary — the two lightest
+       samples in a tool for looking at colour were invisible. In the dark theme the cards are
+       `oklch(.205)` and eight tiles at #000000 or #1F1F1F merged into them.
+
+       TWO inset rings rather than one, and that is the whole trick: the black one is what a
+       near-white sample shows and the white one is what a near-black sample shows, and on every
+       colour in between both are too faint to read as chrome. One ring in either direction would
+       disappear at exactly the end it was needed.
+
+       On the PLATE this is not applied, because the plate is a better answer to the same
+       problem: 1px hairline gutters bound every sample on all four sides, at the same weight,
+       without spending 1px of the sample itself. It is applied by `.figma-tile`, whose tiles
+       wrap freely on a card with nothing between them. Same declaration, one place, two
+       mechanisms — which is why the variable is here and the `box-shadow` is not.
+    */
+    --swatch-edge:
+        inset 0 0 0 1px rgb(0 0 0 / 0.1), inset 0 0 0 1px rgb(255 255 255 / 0.08);
 }
 
-/* Hover and selection are `hover:ring-2 ring-foreground` / `aria-pressed:ring-primary`
-   at the call site. Only the stacking stays here: a ring is drawn outside the box, so
-   without this the next swatch in the grid paints over it.
+/*
+   The plate's rules: a 1px ring on every sample, meeting its neighbours' inside the gutter.
 
-   `.wall`-scoped, like everything else that responds to a pointer: outside the wall a swatch
-   is a sample, not a control. */
+   `:not(.empty)` because the pad cells past a chromatic family's eighth rung are page, not
+   plate — the field's right edge steps in at column 9, which is honest, grey shipping ten rungs
+   to the chromatic eight. Boxing those gaps would claim samples that are not there.
+*/
+.wall .swatch:not(.empty) {
+    box-shadow: 0 0 0 1px var(--border);
+}
+
+/* A ring is drawn outside the box, so without this the next sample in the field paints over
+   it. `.wall`-scoped, like everything else that responds to a pointer: outside the wall a
+   swatch is a sample, not a control. */
 .wall .swatch:hover,
-.wall .swatch[aria-pressed='true'] {
+.wall .swatch[aria-pressed='true'],
+.wall .swatch:focus-visible {
     z-index: 1;
 }
 
@@ -403,19 +731,37 @@ input[type='range'] {
     cursor: default;
 }
 
-/* The rung is the identity; the hex is the read-out. Ranked by size and
-   position rather than by two greys, which no swatch background can guarantee. */
 /*
-   The opacity pair below stays, and it is not chrome that escaped the sweep.
+   The rung is the identity; the hex is the read-out. Ranked by WEIGHT and POSITION, which is
+   what the line above has always claimed and what the pair of `opacity` declarations that used
+   to sit here actually contradicted.
 
-   The comment above is the reason: these two labels sit ON the colour under test, so they
-   cannot be ranked by two greys — no swatch background can guarantee either of them is
-   readable. They are ranked by transparency against whatever they happen to sit on, which
-   is a property of the data, not of the theme.
+   ## Why they went, measured
+
+   `.swatch-rung` was `opacity: .55` and `.swatch-hex` was `.72`. Composited against the 66
+   backgrounds they sit on and checked against WCAG AA:
+
+       89 of the 132 labels on the wall came out under 4.5:1
+       65 of the 66 RUNG NUMBERS failed, worst 2.05:1
+       at full ink: 4 failures, minimum 4.30 — and those 4 are the ink pair's own crossover,
+       fixed in `color/oklab.ts`
+
+   The rung number is what identifies a tile: `PaletteWall` puts it on every swatch precisely
+   because reading it off a header row meant counting columns. Ranking it DOWN into 2:1 made
+   the app's primary identifier its least readable text.
+
+   The old note argued the two could not be ranked by greys, because no swatch background can
+   guarantee a given grey is readable. That part is right and is unchanged — the ink here is
+   still chosen per shade by measured contrast, never from a theme token. What does not follow
+   is that transparency was the alternative: fading ink toward its background is the same move
+   as picking a lighter grey, with the background doing the picking.
+
+   The ranking that survives contact with 66 grounds is the one already in the class table:
+   the rung is 600 weight at the top-left, the hex is 400 at the bottom. Weight and position,
+   never a lighter ink.
 */
 .swatch-rung {
     font-variant-numeric: tabular-nums;
-    opacity: 0.55;
     text-align: left;
 }
 
@@ -424,17 +770,6 @@ input[type='range'] {
     flex-direction: column;
     gap: 2px;
     align-items: flex-start;
-}
-
-.swatch-hex {
-    opacity: 0.72;
-}
-
-.wall .swatch:hover .swatch-rung,
-.wall .swatch:hover .swatch-hex,
-.wall .swatch[aria-pressed='true'] .swatch-rung,
-.wall .swatch[aria-pressed='true'] .swatch-hex {
-    opacity: 1;
 }
 
 /* A mark means "this rung is not plain ladder output". It has to be readable on
@@ -470,8 +805,13 @@ input[type='range'] {
    `.swatch.dark` gets white. Reading `--foreground` here would tie the readability of a
    palette label to the app's theme, and the label would vanish on half the palette.
 */
+/* Mono, like every other number on a sample. `+0.010 L` and `anchor` are read off the plate in
+   the same glance as the rung and the hex, and the interface face put them in a second voice
+   inside a single tile. 9px is held below the file's own type floor deliberately — see the note
+   above — and the tracking comes off because the data face is already narrow. */
 .swatch-mark {
-    font: 600 9px/1.6 var(--font-sans);
+    font: 600 9px/1.6 var(--font-mono);
+    letter-spacing: 0;
     padding: 0 3px;
     background: rgba(0, 0, 0, 0.32);
     color: #fff;
@@ -481,7 +821,11 @@ input[type='range'] {
 .swatch.light .swatch-rung,
 .swatch.light .swatch-hex,
 .swatch.light .swatch-mark {
-    color: #14161b;
+    /* Pure black, kept in step with `INK_DARK` in `color/oklab.ts` — which is the function
+       that decides WHICH of the two this rule applies. The arithmetic for why it is not
+       `#14161b` any more is in that file: the crossover between the two inks is the worst
+       case on the whole scale, and `#14161b` puts it at 4.30:1. */
+    color: #000000;
 }
 .swatch.light .swatch-mark {
     background: rgba(255, 255, 255, 0.62);
@@ -824,11 +1168,7 @@ p.lede {
     padding: var(--s5) var(--s5) var(--s7);
 }
 
-/* --- the wall: bigger swatches, and motion that shows the derivation ------ */
-
-.wall {
-    gap: var(--s1);
-}
+/* --- the wall: motion that shows the derivation --------------------------- */
 
 /*
    Geometry moved to the single `.swatch` rule above. What is left here is the wall's
@@ -850,6 +1190,41 @@ p.lede {
     transition-delay: calc(var(--stagger, 0) * 26ms), 0ms, 0ms;
 }
 
+/*
+   THE ARRIVAL, and it is the app's own thesis performed once.
+
+   `--stagger` is a rung's distance from the middle of the ladder, and the wall already uses it
+   for the RE-SOLVE: move an anchor and you see green and menthol follow the blue outward
+   instead of the whole field snapping. That cascade is the product — the causality is the thing
+   being demonstrated — and it was only ever visible to somebody who already knew to drag
+   something.
+
+   So the same cascade runs once on first paint. The plate assembles outward from where the
+   anchors sit, which means the first thing anybody sees is the claim the page makes in words
+   two lines above it: solved, not picked.
+
+   `both`, so a sample is invisible until its turn rather than flashing at full opacity first.
+   26ms per step is the same pitch as the re-solve, deliberately — one motion vocabulary, so the
+   arrival and the consequence read as the same mechanism rather than as two effects.
+
+   It cannot re-run: a CSS animation on mount fires once per element, and a re-solve repaints
+   through custom properties without remounting anything. That is the same property that makes
+   the wall cheap, doing a second job here.
+*/
+@keyframes plate-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.wall .swatch {
+    animation: plate-in 220ms var(--ease) both;
+    animation-delay: calc(var(--stagger, 0) * 26ms);
+}
+
 /* During a drag the transition would lag behind the pointer and read as jelly,
    so it is switched off and restored on release. */
 /* Direct manipulation must be instant: a staggered settle while the value is still moving
@@ -859,49 +1234,152 @@ p.lede {
     transition: none;
 }
 
+/*
+   Three states, one ladder, and nothing lifts.
+
+   `translateY(-2px)` plus `--shadow-lg` was the old treatment, and it is exactly wrong on a
+   plate: it pulls a chip out of a continuous surface and casts it onto the neighbours, so the
+   one gesture that is supposed to help you compare two colours puts a shadow across one of
+   them. The frame stays in the plane. Depth is not the axis this app measures on.
+
+   Every ring is TWO-TONE, and that is measured rather than stylistic: what a ring here has to
+   be visible against is 66 arbitrary colours. `--foreground` alone is near-white in the dark
+   theme and vanishes on `grey-100`; near-black in the light theme and vanishes on `grey-1000`.
+   `--background` immediately outside the sample, then `--foreground` outside that, means one of
+   the two always contrasts with the colour and the pair always contrasts with each other.
+
+   The ladder is by WIDTH, so the three states are distinguishable without a fourth tone:
+
+     hover     2px   you are over it
+     pressed   3px   its inspector is open
+     focus     4px   the keyboard is here
+
+   The rings used to be Tailwind utilities at the call site (`hover:ring-2 ring-foreground`,
+   `aria-pressed:ring-primary aria-pressed:shadow-lg`) with the stacking and the edge in this
+   file. That is two owners of one `box-shadow`, and utilities outrank the components layer — so
+   the utility silently replaced whatever this file set, `--swatch-edge` and `--shadow-lg`
+   included. One owner now, and it is here.
+*/
 .wall .swatch:hover {
-    transform: translateY(-2px);
     box-shadow:
-        0 0 0 2px var(--foreground),
-        var(--shadow-lg);
+        0 0 0 1px var(--background),
+        0 0 0 2px var(--foreground);
 }
 
 .wall .swatch[aria-pressed='true'] {
-    transform: translateY(-2px);
+    box-shadow:
+        0 0 0 1px var(--background),
+        0 0 0 3px var(--foreground);
+}
+
+/* The widest of the three, so the keyboard's position is never mistaken for a hover.
+   `outline: none` because the box-shadow IS the indicator, and the base rule's outline would
+   otherwise sit outside both rings at a third tone. */
+.wall .swatch:focus-visible {
+    outline: none;
+    box-shadow:
+        0 0 0 2px var(--background),
+        0 0 0 4px var(--foreground);
 }
 
 /*
-   A focus ring that survives all 66 backgrounds, which needs TWO tones.
+   The family axis, right-aligned against the plate.
 
-   The swatch is the app's primary control and had no focus treatment at all — it carries a
-   hover ring and a pressed ring and nothing for the keyboard, so tabbing the wall fell
-   through to the base `*:focus-visible` outline. One grey ring cannot work here: the thing
-   it has to be visible against is 66 arbitrary colours, which is the same problem
-   `.swatch-rung` solves with opacity and `prefersDarkInk` solves by measurement.
+   Left-aligned labels leave a ragged gap of whatever the longest name did not use — here up to
+   40px of nothing between `Red` and the first swatch of its row. Right-aligned, every row's name
+   ends at the same 12px from the field, so the eye travels straight from the name to the sample
+   and the axis reads as an axis.
 
-   So `--background` immediately outside the tile, then `--foreground` outside that. One of
-   the two always contrasts with the swatch, and the pair always contrasts with each other,
-   whatever the rung. `outline: none` because the box-shadow IS the indicator, and the base
-   rule's outline would otherwise sit outside both rings at a third tone.
-
-   4px total against hover's 2px, so focus and hover are not the same mark. The lift is
-   shared with hover deliberately: a focused swatch is one you are about to open.
+   Reverted to a row header, left-aligned, in the narrow tier — there is no column to sit beside
+   there.
 */
-.wall .swatch:focus-visible {
-    outline: none;
-    transform: translateY(-2px);
-    box-shadow:
-        0 0 0 2px var(--background),
-        0 0 0 4px var(--foreground),
-        var(--shadow-lg);
+.wall-family {
+    text-align: right;
+    padding-right: var(--s3);
+    justify-content: center;
 }
 
-.wall-family {
-    padding-right: var(--s2);
+.wall-family-name {
+    justify-content: flex-end;
 }
-.wall-head {
-    padding-bottom: var(--s1);
+
+/* ------------------------------------------------------------------ bench --- */
+
+/*
+   A section on the bench: a hairline, an index, a title, and its content. No box.
+
+   The three sections under the plate — how the palette is built, the given colours, what Figma
+   says — were `Card`s: a bordered, rounded, elevated container each, stacked in a 24px flex
+   column. Two things wrong with that, and only one is taste.
+
+   The taste one: a card is a shape that says "this is a discrete object among others like it",
+   which is true of a list of products and false here. These are three sections OF ONE
+   DOCUMENT, read in order, about the plate above them. A rule and an index say that; a box
+   says the opposite.
+
+   The other one is a rule this codebase already holds and was breaking: no nested elevation.
+   The given-colours card contained tile grids, the Figma card contained twelve labelled rows,
+   the fold card sat inside a `<details>` inside the page — three levels of container for one
+   level of content. Flattening removes a border, a radius and a shadow from each, and what is
+   left is the content, which is what anybody came for.
+
+   The index is not decoration. It is the only thing that tells you the sections are ordered and
+   how many there are, which a stack of visually identical cards cannot.
+*/
+.bench {
+    display: grid;
+    grid-template-columns: 2.25rem minmax(0, 1fr);
+    column-gap: var(--s3);
+    padding-top: var(--s5);
+    border-top: 1px solid var(--border);
 }
+
+.bench-index {
+    grid-column: 1;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.45;
+    color: var(--muted-foreground);
+    /* Aligned to the TITLE's baseline, not to the top of the block. An index that floats
+       above its own heading reads as a stray number. */
+    padding-top: 1px;
+}
+
+.bench-title {
+    grid-column: 2;
+    margin: 0;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    letter-spacing: -0.008em;
+    color: var(--foreground);
+}
+
+.bench-note {
+    grid-column: 2;
+    margin: var(--s1) 0 0;
+    /* The same measure `[data-slot='card-description']` had. Prose on a 1200px bench runs to
+       120 characters without it, where readable is 45-75. */
+    max-width: 65ch;
+    font-size: var(--text-xs);
+    line-height: 1.6;
+    color: var(--muted-foreground);
+}
+
+.bench-body {
+    grid-column: 2;
+    margin-top: var(--s4);
+}
+
+/*
+   The fold is deliberately NOT indexed.
+
+   "How this palette is built" is not a third peer section, it is the plate's own footnote — it
+   explains the thing directly above it and it is closed by default. The two indexed sections are
+   the ones that stand on their own: the colours the engine does not own, and what Figma says.
+   Numbering the fold as well would claim an ordering across three things that are not the same
+   kind of thing.
+*/
 
 /* --- collapsible section, for the rules under the palette ----------------- */
 
@@ -1041,6 +1519,19 @@ kbd {
 .chain {
     position: relative;
     padding-bottom: var(--s2);
+    /*
+       A MEASURE, and it is the same defect `AnchorField` already documents one screen up.
+
+       `.chain li` is `display: flex` with the description on `flex: 1` and the value after it,
+       so on a 1250px bench the six derived figures were flung to the far right edge — roughly
+       800px from the sentence each one belongs to, across nothing. That note called the earlier
+       version of this "the OKLCH read-out flung to the far right edge"; this is the same row
+       shape one panel over, and it was missed because the value is short.
+
+       56ch puts the number where the eye lands after reading the step. The rows still rule the
+       full width of their own box, so they read as a table rather than as a floating list.
+    */
+    max-width: 56ch;
 }
 
 /* ------------------------------------------------------------- status bar ---- */
@@ -1069,6 +1560,20 @@ button.status-group {
 */
 .status-label {
     transition: color var(--fast) var(--ease);
+    /* The label names the reading; the reading is the reading. Ranked by ink and weight —
+       the value carries the bar's own colour, this steps back one notch. Set here rather
+       than at four call sites, which is what it was. */
+    color: var(--muted-foreground);
+    font-weight: 500;
+}
+
+/* Standing context rather than a live value: the space the ladder is reasoned in. It sits
+   after the spacer, so it is the first thing the bar's horizontal scroll takes away — which
+   is the right order, being the one item here that never changes. */
+.status-note {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    color: var(--muted-foreground);
 }
 
 .page-help-body {
@@ -1096,6 +1601,16 @@ button.status-group {
 
 @media (prefers-reduced-motion: reduce) {
     .page-help-body {
+        animation: none;
+    }
+
+    /*
+       The plate arrives at once. `animation: none` on a `both`-filled keyframe leaves the
+       element at its natural state, which is `opacity: 1` — so the samples are simply there,
+       rather than there-but-invisible, which is what dropping the animation without the fill
+       mode in mind would have produced.
+    */
+    .wall .swatch {
         animation: none;
     }
 }
@@ -1187,6 +1702,29 @@ button.status-group {
     max-width: min(470px, 78vw);
     background: var(--card);
     animation: pop-in 140ms var(--ease) both;
+
+    /*
+       A ceiling, so the panel can never be taller than the window it opens in.
+
+       Measured on a 1280x720 window, opening a swatch on the second row: the panel is 615px
+       tall and starts at y=389, so 318px of it — the three channel sliders and the "Why is it
+       leaving the ladder?" field, which is the required input for recording an override — sat
+       below the fold with nothing on screen to say so. The bottom-sheet layout further down
+       has had the answer to this all along; the wide layout did not.
+
+       `min(...)` against the panel's own content, so a panel that fits is untouched: only the
+       ones that would overflow get the scroller. Paired with the `scrollIntoView` in
+       `PaletteWall`, which handles the panel that fits and merely hangs off the bottom edge.
+
+       A ceiling, not a height — the distinction is load-bearing. `.swatch-pop[data-flip]` is
+       anchored by its BOTTOM edge, so anything that makes this box's height vary while a
+       slider is being dragged moves the whole panel under the cursor. That is the bug
+       `RungInspector`'s always-rendered status slot and its `truncate` were written to kill,
+       and a fixed bound cannot reintroduce it.
+    */
+    max-height: calc(100dvh - 5rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 /* Right-hand columns anchor to their right edge, or the panel leaves the
@@ -1341,8 +1879,28 @@ button.status-group {
    a different component from the palette above it. */
 /* A ladder row's columns come from `--figma-cols`, written by `FigmaPalettes` — see the note
    at that call site for why the count rather than the template. */
+/*
+   A LADDER is a plate; a SET is a set.
+
+   The reference rows whose names end in a rung line up in columns, exactly like the wall above,
+   and they get the wall's treatment: 1px gutters over `--border`, so the samples abut and can be
+   compared with nothing between them. The rows that have no rungs — the social brands, the
+   one-off chart hues — are a collection rather than a scale, and they keep their gutters and
+   their own inset edge, because tiles that wrap have no grid to bound them and lining them up
+   would claim an order they do not have.
+
+   That distinction is the card's whole subject: `rowsOf` already decides which rows are ladders,
+   and this is that decision made visible.
+*/
 .figma-wall-ladder {
     grid-template-columns: repeat(var(--figma-cols, 8), minmax(46px, 1fr));
+    gap: 1px;
+}
+
+/* The plate's rule in place of the free tile's inset one: an outset 1px ring that meets its
+   neighbours' in the gutter and closes the row's outer edge. Same mechanism as the wall. */
+.figma-wall-ladder .figma-tile {
+    box-shadow: 0 0 0 1px var(--border);
 }
 
 .figma-wall-free .figma-wall-tiles {
@@ -1376,90 +1934,51 @@ button.status-group {
     opacity: 0.35;
 }
 
+/* The inset edge lives here, on the tiles that have no grid to bound them. See the
+   declaration on `.swatch` for the measurement behind the two opposed rings. */
+.figma-tile {
+    box-shadow: var(--swatch-edge);
+}
+
 /* The head is a rung on a ladder row and a full state name elsewhere, so it has to be able
-   to take two lines without pushing the hex out of the tile. */
+   to take two lines without pushing the hex out of the tile.
+
+   `text-overflow: ellipsis` because `overflow: hidden` alone clipped mid-glyph with nothing to
+   say it had: `background` read as `backgroun` and `tiktokBlue` as `tiktokBlu`, which look like
+   names rather than truncations. A clipped name has to admit it is clipped — the full one is on
+   the tile's `title` either way. */
 .figma-tile .swatch-rung {
     white-space: normal;
     overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* ==========================================================================
-   NARROW SCREENS
+   THE INSPECTOR BECOMES A SHEET — 1099px, and the number is arithmetic
    ==========================================================================
 
-   The app was desktop-only by construction: before this block there were no width-based
-   media queries at all, and the numbers say why that mattered. The wall's min-content width
-   is 594px — a 104px label column plus ten 46px rungs plus gaps — and a phone viewport gives
-   the workspace 327px at 375 and 382px at 430. So the palette, the one thing the tool is
-   for, overflowed its container by 212-267px and sat under a horizontal scrollbar.
+   Its own breakpoint, above the layout tiers below, because it answers a different question.
+   The plate reflows when the PLATE stops fitting; the shade inspector has to stop being an
+   anchored popover when a 470px panel stops fitting BESIDE it, and those are not the same width.
 
-   ONE breakpoint, at 640px, which is Tailwind's `sm`. Not a device width: it is the point
-   where the wall stops fitting, measured rather than picked, and it is the same number the
-   `sm:` prefixes already in the dialog use — so there is one boundary in the app rather than
-   a CSS one and a utility one that disagree.
+   `alignEnd` in `PaletteWall` flips the panel to the right edge from the middle column onward
+   (`i > columns / 2`), so the worst case is the last column that still opens leftward — column 5
+   of grey's ten. Its left offset is the 104px label column plus five column widths, and a column
+   is `(inner - 104 - 9 gaps) / 10`:
 
-   The reflow keeps the thing that makes the wall an instrument: every rung stays a COLUMN,
-   so a rung number still means the same lightness read straight down. What gives way is the
-   label column, which becomes a row header above its ladder — that buys 104px, the single
-   largest saving available, and costs only that the name sits above rather than beside.
+       viewport   inner   column   offset   offset + 470   fits?
+       1280       1232      112      664         1134       yes, 98px spare
+       1152       1104       99      599         1069       yes, 35px spare
+       1100       1052       94      574         1044       yes,  8px spare
+       1024        976       86      534         1004       NO, overhangs 28px
+        820        768       66      434          904       NO, overhangs 136px
+
+   Below ~1100 the panel runs past the bench and the browser scrolls the workspace SIDEWAYS to
+   reveal it, which is how this was found: the axis labels slid off the left edge the moment a
+   swatch was opened. A sheet has no side to overhang, and at these widths a 470px panel covers
+   most of the plate anyway — so the anchored position was buying nothing it did not also cost.
 */
-@media (max-width: 639px) {
-    .workspace {
-        /* 16, not 24. Two 8px savings per side is 16px of ladder. */
-        padding: var(--s4) var(--s4) var(--s6);
-        gap: var(--s4);
-    }
-
-    /*
-       No label column: the family name spans the grid as its own row instead.
-
-       36px, and the number is measured rather than picked. `minmax(0, 1fr)` was tried first
-       and is wrong: it fits every width, and at 375px it makes a swatch 33px with 27px of
-       content, where grey's `1000` needs 28.8 at 12px mono. So it fits by clipping the one
-       string that identifies the tile, which is the wrong thing to buy width with.
-
-       At 36px the label always fits, the grid fits outright at 430px, and it overhangs by
-       17px at 393 and 35px at 375 — carried by `.workspace`'s existing horizontal scroll,
-       which is where the wall's overflow has always gone. A 35px nudge to read grey's dark
-       end is a better trade than a permanently truncated rung number.
-    */
-    .wall {
-        grid-template-columns: repeat(var(--wall-cols, 10), minmax(36px, 1fr));
-        gap: 2px;
-    }
-
-    .wall-family {
-        grid-column: 1 / -1;
-        flex-direction: row;
-        align-items: baseline;
-        gap: var(--s2);
-        padding: var(--s3) 0 var(--s1);
-    }
-
-    /* Both head cells span, for the same reason: there is no column 1 to sit beside now.
-       `.wall-head-rule` is `2 / -1` in the wide layout, which would leave it short here. */
-    .wall-head-label,
-    .wall-head-rule {
-        grid-column: 1 / -1;
-    }
-
-    /*
-       Shorter, and the hex read-out goes.
-
-       A six-character hex needs 43px at 12px mono and a swatch here is 36 — so it would clip,
-       which reads worse than absent. The rung number stays, because it is what identifies the
-       tile and it does fit; the hex is one tap away in the inspector, which shows it larger
-       and copyable anyway. 56px of height keeps three families on screen instead of two.
-    */
-    .swatch {
-        height: 56px;
-        padding: var(--s1) 3px;
-    }
-
-    .swatch-hex {
-        display: none;
-    }
-
+@media (max-width: 1099px) {
     /*
        The inspector becomes a BOTTOM SHEET, and it has to be `fixed` to do it.
 
@@ -1468,6 +1987,13 @@ button.status-group {
        rendered 36px across. The wide layout gets away with `width: 470px` precisely because
        it ignores the cell's width, and `max-width: min(470px, 78vw)` then squeezed 470px of
        channel sliders into 293 at a 375px viewport while leaving an 11% margin either side.
+
+       It covers the whole of tier one, tablets included, and that is a decision rather than
+       an inherited default. The wide layout's anchored popover earns its position by sitting
+       BESIDE the colours you are comparing; measured at 768px it covered eight of the nine
+       families, because 470px is most of the viewport. Once it occludes the wall anyway, a
+       sheet is the better shape — it cannot overhang an edge, and it does not depend on
+       `data-end` guessing which side has room.
 
        Fixed to the bottom edge instead, full width, which is what a phone does with a panel
        this size. It covers the status bar while open — expected of a sheet, and the bar's
@@ -1502,6 +2028,97 @@ button.status-group {
     .swatch-pop[data-flip] {
         inset: auto 0 0 0;
         top: auto;
+    }
+}
+
+/* ==========================================================================
+   NARROW SCREENS — two layout tiers, both measured
+   ==========================================================================
+
+   The app was desktop-only by construction: before this section there were no width-based
+   media queries at all, and a phone viewport gives the workspace 327px at 375 and 382px at
+   430 against a wall that wants far more. So the palette, the one thing the tool is for,
+   overflowed its container and sat under a horizontal scrollbar.
+
+   ## Why there are two now, and why the first one moved
+
+   This was ONE breakpoint at 640px, justified by a wall min-content of 594px — "a 104px label
+   column plus ten 46px rungs plus gaps". That arithmetic uses the 46px `minmax` FLOOR, and a
+   column is not free to sit on its floor: each one carries a six-character hex at 12px mono,
+   which needs about 43px plus padding, so the real min-content is wider than the floor allows.
+
+   Measured in the browser rather than recomputed: `wall.scrollWidth` is **763px**, and with
+   `.workspace`'s 24px of padding either side the wide layout needs **811px**. So every
+   viewport from 640 to 810 got the desktop grid and could not hold it — +90px of overflow at
+   700, +43px at 768. That is iPad portrait and a half-screen window on a laptop, and the
+   symptom was the exact one this section exists to remove: `grey-1000`, which is an anchor,
+   off the right edge behind a horizontal drag.
+
+   **Tier one, 810px** — the point where the wide layout stops fitting. The label column
+   becomes a row header above its ladder: 104px, the single largest saving available, and it
+   costs only that the name sits above rather than beside. Every rung stays a COLUMN, which is
+   what makes the wall an instrument — a rung number still means the same lightness read
+   straight down.
+
+   (The shade inspector has a third, higher breakpoint of its own, just above — it stops being
+   an anchored popover well before the plate stops fitting, and the arithmetic is there.)
+
+   **Tier two, 639px** — Tailwind's `sm`, and the same boundary the dialog's `sm:` prefixes
+   already use. Below it the row-header reflow is no longer enough on its own, so two more
+   things give way: the hex read-out and the column floor. Those two are only correct on a
+   phone, which is why they are not in tier one — at 780px there is room for both and dropping
+   them would be spending width the layout has.
+*/
+@media (max-width: 810px) {
+    .workspace {
+        /* 16, not 24. Two 8px savings per side is 16px of ladder. */
+        padding: var(--s4) var(--s4) var(--s6);
+        gap: var(--s4);
+    }
+
+    /*
+       No label column: the family name spans the grid as its own row instead.
+
+       The 46px floor is KEPT in this tier. That is the width a column needs to hold its hex
+       read-out, and above 640px there is room for it: dropping the label column alone takes
+       the wall from 763px to about 644px, which fits every viewport in this band. Tier two
+       lowers the floor, because below 640 it has to.
+    */
+    .wall {
+        grid-template-columns: repeat(var(--wall-cols, 10), minmax(46px, 1fr));
+        gap: 2px;
+    }
+
+    .wall-family {
+        grid-column: 1 / -1;
+        flex-direction: row;
+        align-items: baseline;
+        gap: var(--s2);
+        padding: var(--s3) 0 var(--s1);
+    }
+    /*
+       The action group wraps instead of running off the edge.
+
+       `.pal-actions-right` is `flex: none` in the wide layout, which is right there — the five
+       controls fit on one line beside `Add a colour` and should not be squeezed. On a phone the
+       outer row already wraps, so the group lands on its own line at 390px with five controls
+       to fit into it, and `flex: none` then refused to wrap or shrink: `Reset palette` was
+       clipped mid-word by the viewport.
+
+       Measured at 390px, which is where it showed. `Undo`, `Redo` and `Copy link` are what took
+       the group from two controls to five, so this is their bill.
+    */
+    .pal-actions-right {
+        flex-wrap: wrap;
+        flex: 1 1 auto;
+        justify-content: flex-start;
+    }
+
+    /* Both head cells span, for the same reason: there is no column 1 to sit beside now.
+       `.wall-head-rule` is `2 / -1` in the wide layout, which would leave it short here. */
+    .wall-head-label,
+    .wall-head-rule {
+        grid-column: 1 / -1;
     }
 
     /*
@@ -1564,10 +2181,88 @@ button.status-group {
     .figma-wall-ladder {
         overflow-x: auto;
         scrollbar-width: thin;
+        /*
+           `min-width: 0` is what makes the `overflow-x` above do anything at all.
+
+           The rule claimed to scroll and did not. `.figma-wall` is a column flex container in
+           this tier, so this row sized itself to its CONTENT — ten columns at their minimum —
+           and simply grew past the card. Measured at 375px: it stuck out 162px, and it was the
+           single widest thing on the page, so what actually scrolled was `.workspace`, dragging
+           the whole layout sideways rather than one row of tiles.
+
+           `overflow` only ever scrolls a box that has been told it may be narrower than its
+           content, and a flex item's `min-width` defaults to `auto`, which refuses exactly
+           that. So this pair is the rule; the `overflow-x` on its own was a comment.
+        */
+        min-width: 0;
+        max-width: 100%;
     }
 
     .figma-wall-free .figma-wall-tiles {
         grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+    }
+}
+
+/* ==========================================================================
+   TIER TWO — a phone, where the row-header reflow is not enough on its own
+   ==========================================================================
+
+   639px, Tailwind's `sm`, and the same boundary the dialog's `sm:` prefixes use — so there is
+   one number in the app rather than a CSS one and a utility one that disagree.
+
+   Tier one buys 104px by moving the family name above its ladder. That fits every viewport
+   down to 640. Below it, the two things that only a phone should pay for.
+*/
+@media (max-width: 639px) {
+    /*
+       The column floor drops to 36px, and the number is measured rather than picked.
+
+       `minmax(0, 1fr)` was tried first and is wrong: it fits every width, and at 375px it
+       makes a swatch 33px with 27px of content, where grey's `1000` needs 28.8 at 12px mono.
+       So it fits by clipping the one string that identifies the tile, which is the wrong thing
+       to buy width with.
+
+       At 36px the label always fits, the grid fits outright at 430px, and it overhangs by 17px
+       at 393 and 35px at 375 — carried by `.workspace`'s existing horizontal scroll, which is
+       where the wall's overflow has always gone. A 35px nudge to read grey's dark end is a
+       better trade than a permanently truncated rung number.
+    */
+    .wall {
+        grid-template-columns: repeat(var(--wall-cols, 10), minmax(36px, 1fr));
+    }
+
+    /*
+       Shorter, and the hex read-out goes.
+
+       A six-character hex needs 43px at 12px mono and a swatch here is 36 — so it would clip,
+       which reads worse than absent. The rung number stays, because it is what identifies the
+       tile and it does fit; the hex is one tap away in the inspector, which shows it larger
+       and copyable anyway. 56px of height keeps three families on screen instead of two.
+    */
+    .swatch {
+        height: 56px;
+        padding: var(--s1) 3px;
+    }
+
+    .swatch-hex {
+        display: none;
+    }
+
+    /*
+       And the provenance mark goes with it, for the same reason and by the same rule.
+
+       `anchor` and `+0.010 L` are 9px mono, which is 31px and 49px against a 36px column — so
+       the first just fits and the second renders as `+0.01`, and a truncated number is the one
+       thing this tier has already decided reads worse than absent. Mono made it worse than the
+       sans it replaced, which is the honest price of putting one voice on the plate.
+
+       Nothing is actually lost here. Every anchor is enumerated with its hex in "How this
+       palette is built", two sections down, and both marks are in the sheet a tap away — which
+       is the identical trade the hex above makes. The clamp notch stays: it is a shape, not a
+       string, so it cannot clip.
+    */
+    .swatch-mark {
+        display: none;
     }
 }
 

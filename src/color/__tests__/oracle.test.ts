@@ -209,14 +209,14 @@ describe('inkOn', () => {
         // enough to fail that test and yet want white ink.
         for (const brand of ['#178dfe', '#ff6726']) {
             const chosen = inkOn(brand);
-            const other = chosen === '#ffffff' ? '#14161b' : '#ffffff';
+            const other = chosen === '#ffffff' ? '#000000' : '#ffffff';
             expect(contrastHex(brand, chosen)).toBeGreaterThanOrEqual(contrastHex(brand, other));
         }
     });
 
     it('agrees with prefersDarkInk', () => {
         for (const hex of SAMPLES) {
-            expect(prefersDarkInk(hex)).toBe(inkOn(hex) === '#14161b');
+            expect(prefersDarkInk(hex)).toBe(inkOn(hex) === '#000000');
         }
     });
 

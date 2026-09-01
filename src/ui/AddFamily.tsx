@@ -240,12 +240,18 @@ function AddFamilyForm({ onDone }: { onDone: () => void }) {
                 ) : (
                     preview && (
                         <div className="flex flex-col gap-3">
-                            <div className="flex gap-1">
+                            {/* A PLATE, like the wall: 1px gutters, square corners, a hairline
+                                ring per sample. These eight are a ladder — the same object the
+                                wall draws — so they are drawn the same way. They were rounded
+                                tiles in a 4px gutter, which is the shape the wall stopped
+                                using, and two shapes for one idea in one app is what
+                                `ColourTile` exists to prevent. */}
+                            <div className="flex gap-px">
                                 {preview.rungs.map((r) => (
                                     <div
                                         key={r.rung}
                                         title={`${r.rung} — ${r.hex}`}
-                                        className="font-mono flex flex-1 flex-col justify-between rounded-md p-1.5 text-xs/tight"
+                                        className="font-mono flex flex-1 flex-col justify-between p-1.5 text-xs/tight shadow-[0_0_0_1px_var(--border)]"
                                         style={{
                                             height: 72,
                                             background: r.hex,

@@ -47,6 +47,32 @@ import { ChannelField } from './ChannelField';
 import { hexToHsl, hslToHex } from '../color/hsl';
 import { hexToOklch, inGamut, oklchToHex } from '../color/oklab';
 
+/**
+ * How many colours a track gradient is sampled at.
+ *
+ * Nine, and the ceiling matters more than the exact figure: every one of these rebuilds on
+ * every pointer move, three tracks at a time, while the same move is re-solving 66 shades. The
+ * frame budget belongs to the solve. Browsers interpolate between the stops in sRGB, which is
+ * close enough over a ninth of a range that no eye finds the seams — the track is a picture of
+ * the direction the handle travels, not a colour read-out.
+ */
+const TRACK_STOPS = 9;
+
+/**
+ * Sweep one channel and paint the result along the track.
+ *
+ * The other two channels are held exactly where they are, so the gradient answers the only
+ * question the handle can pose: what happens if I move THIS one. `oklchToHex` and `hslToHex`
+ * both clamp into sRGB, so an out-of-gamut stretch shows as the flat edge of the space rather
+ * than as a gap — which is the honest picture: past that point the handle stops changing the
+ * colour, and the constraint chip below says so in words.
+ */
+function trackOf(at: (t: number) => string): string {
+    const stops: string[] = [];
+    for (let i = 0; i < TRACK_STOPS; i++) stops.push(at(i / (TRACK_STOPS - 1)));
+    return `linear-gradient(to right, ${stops.join(', ')})`;
+}
+
 export function ChannelEditor({
     /** The colour the sliders describe. Re-seeds both triples when it moves from outside. */
     hex,
@@ -175,6 +201,7 @@ export function ChannelEditor({
                         max={1}
                         step={0.001}
                         decimals={4}
+                        track={trackOf((t) => oklchToHex(t, lch.C, lch.H))}
                         onChange={(L) => setLchChannel({ ...lch, L })}
                         onDragChange={onDragChange}
                     />
@@ -188,6 +215,11 @@ export function ChannelEditor({
                         max={0.37}
                         step={0.001}
                         decimals={4}
+                        /* The flat stretch at the right-hand end is the sRGB boundary, and
+                           showing it is better than a slider that pretends the top of its
+                           track is reachable. `oklchToHex` clamps, so the gradient simply
+                           stops changing where the space runs out. */
+                        track={trackOf((t) => oklchToHex(lch.L, t * 0.37, lch.H))}
                         onChange={(C) => setLchChannel({ ...lch, C })}
                         onDragChange={onDragChange}
                     />
@@ -199,6 +231,12 @@ export function ChannelEditor({
                         step={0.1}
                         decimals={1}
                         unit="°"
+                        /* 13 stops on hue, not 9: a full turn through every hue at one
+                           lightness is the widest sweep of the six, and at 9 the interpolation
+                           visibly cuts the corner between blue and magenta. */
+                        track={`linear-gradient(to right, ${Array.from({ length: 13 }, (_, i) =>
+                            oklchToHex(lch.L, lch.C, (i / 12) * 360),
+                        ).join(', ')})`}
                         onChange={(H) => setLchChannel({ ...lch, H })}
                         onDragChange={onDragChange}
                     />
@@ -216,6 +254,9 @@ export function ChannelEditor({
                         step={1}
                         decimals={0}
                         unit="°"
+                        track={`linear-gradient(to right, ${Array.from({ length: 13 }, (_, i) =>
+                            hslToHex({ ...hsl, h: (i / 12) * 360 }),
+                        ).join(', ')})`}
                         onChange={(h) => setHslChannel({ ...hsl, h })}
                         onDragChange={onDragChange}
                     />
@@ -227,6 +268,7 @@ export function ChannelEditor({
                         step={1}
                         decimals={0}
                         unit="%"
+                        track={trackOf((t) => hslToHex({ ...hsl, s: t * 100 }))}
                         onChange={(s) => setHslChannel({ ...hsl, s })}
                         onDragChange={onDragChange}
                     />
@@ -238,6 +280,7 @@ export function ChannelEditor({
                         step={1}
                         decimals={0}
                         unit="%"
+                        track={trackOf((t) => hslToHex({ ...hsl, l: t * 100 }))}
                         onChange={(l) => setHslChannel({ ...hsl, l })}
                         onDragChange={onDragChange}
                     />

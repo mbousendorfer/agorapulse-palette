@@ -30,6 +30,17 @@
  * anchored by its bottom edge, so a height change there moves everything you are looking at.
  * That caveat belongs in the scope note, which already states it.
  *
+ * ## The track carries the colour it controls
+ *
+ * A `track` gradient is optional and, where it is given, it is the point of the control. Three
+ * grey tracks in a colour editor mean you have to READ a number to find out which way is
+ * lighter — recall where the answer could simply be shown. `ChannelEditor` builds each one by
+ * sweeping the channel and leaving the other two alone, so the track is a picture of exactly
+ * what the handle does.
+ *
+ * The thumb keeps `accent-color` rather than taking the colour under it: it is the position
+ * marker, and a marker that matches its background stops being one.
+ *
  * ## onDragChange
  *
  * A range input fires per pointer move, and in this app each move re-solves 66 shades. The
@@ -55,6 +66,7 @@ export function ChannelField({
     onChange,
     onDragChange,
     className,
+    track,
 }: {
     label: string;
     value: number;
@@ -68,6 +80,13 @@ export function ChannelField({
     onChange: (next: number) => void;
     onDragChange?: (dragging: boolean) => void;
     className?: string;
+    /**
+     * A CSS gradient painted along the track: what this channel looks like across its range.
+     *
+     * Optional, and absent means the plain accented track. Passing one does not change any
+     * behaviour — it is the picture of the values the handle moves through.
+     */
+    track?: string;
 }) {
     const [text, setText] = useState(value.toFixed(decimals));
     /*
@@ -94,7 +113,12 @@ export function ChannelField({
                 step={step}
                 value={value}
                 aria-label={label}
-                className="min-w-0 flex-1"
+                className={cn('min-w-0 flex-1', track && 'has-track')}
+                /* A custom property rather than `background` directly: `app.css` owns the
+                   track's geometry — its height, its radius and the inset edge that keeps a
+                   pale gradient visible on a pale surface — and only the colours come from
+                   here. */
+                style={track ? { ['--track' as string]: track } : undefined}
                 onChange={(e) => onChange(clamp(Number(e.target.value)))}
                 onPointerDown={() => onDragChange?.(true)}
                 onPointerUp={() => onDragChange?.(false)}

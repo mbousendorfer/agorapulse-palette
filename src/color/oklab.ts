@@ -178,8 +178,24 @@ export function contrastHex(a: string, b: string): number {
     return (hi + 0.05) / (lo + 0.05);
 }
 
-/** The app's own dark ink, and its light one, for labels drawn ON a swatch. */
-const INK_DARK = '#14161b';
+/**
+ * The app's own dark ink, and its light one, for labels drawn ON a swatch.
+ *
+ * The dark one is pure black, and that is arithmetic rather than taste.
+ *
+ * `inkOn` already picks whichever of the two measures better, so the worst case on any
+ * background is the CROSSOVER — the lightness where both inks read the same. With a given dark
+ * ink of luminance `d`, that is where `(L + .05) / (d + .05) = 1.05 / (L + .05)`, so the best
+ * contrast available anywhere on the scale is `sqrt(1.05 * (d + .05)) / (d + .05)`.
+ *
+ *   `#14161b`  d = 0.0069  →  worst case 4.30:1   fails AA
+ *   `#000000`  d = 0       →  worst case 4.58:1   clears it
+ *
+ * Measured on the wall, that is the difference between four rungs failing and none: the last
+ * four failures after the opacity ranking came out of `app.css` were exactly the shades sitting
+ * at this crossover. Two hex points of ink for four passing labels.
+ */
+const INK_DARK = '#000000';
 const INK_LIGHT = '#ffffff';
 
 /**

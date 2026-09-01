@@ -44,9 +44,17 @@ import { prefersDarkInk } from '../color/oklab';
  * The face, shared by the wall's swatch and by every read-only tile.
  *
  * `font-mono` is load-bearing rather than stylistic: these grids exist to be read down a
- * column, and 66 hex values in a proportional face do not line up.
+ * column, and 66 hex values in a proportional face do not line up. It now resolves to a
+ * declared face rather than to whatever `ui-monospace` meant on the reader's platform — see
+ * the deviation note in `theme.css`.
+ *
+ * SQUARE, and that is the plate's doing. `rounded-sm` was here, which is right for a tile
+ * floating in a gutter and wrong for a sample abutting its neighbour: rounded corners in a
+ * 1px-gutter field leave four little diamonds of background at every intersection, so the
+ * hairline grid reads as dotted. The read-only tiles square off with it, because one shape
+ * language across three grids is the point of this file existing.
  */
-export const SWATCH_FACE = 'swatch rounded-sm font-mono text-xs leading-snug';
+export const SWATCH_FACE = 'swatch font-mono text-xs leading-snug';
 
 /** The identity line — a rung on a ladder, a name elsewhere. */
 export const SWATCH_HEAD = 'swatch-rung font-mono text-xs leading-none font-semibold tracking-wide';

@@ -11,8 +11,7 @@
  */
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Link2, Redo2, Undo2 } from 'lucide-react';
 
 import { ColourTile, SWATCH_FACE, SWATCH_HEAD, SWATCH_HEX } from './ColourTile';
 
@@ -25,7 +24,7 @@ import { cssVarFromPath } from '../model/cssName';
 // `graph` is used only by GivenColours, which lists vendored literals. The wall
 // itself deliberately does NOT consult it — see rungCssVar below.
 import { BASELINE_SPEC, graph, paletteEditCount, useStore } from '../state/store';
-import { exportFigma } from '../export';
+import { encodeSpecToHash, exportFigma } from '../export';
 import { AddFamilyInline } from './AddFamily';
 import { PageHeading } from './PageHelp';
 import { EngineRules } from './EngineRules';
@@ -89,6 +88,20 @@ export function PaletteWall() {
         wallRef.current = el;
         setWallGeneration((n) => n + 1);
     }, []);
+
+    /**
+     * Which swatch holds the wall's single tab stop.
+     *
+     * A roving tabindex, and the reason is measured: the page has 109 focusable elements and
+     * 80 of them were in here, so reaching "How this palette is built" from the header cost
+     * about eighty presses of Tab. Worse, it exposed a two-dimensional instrument as a flat
+     * list — and the gesture this wall exists for is the VERTICAL one, comparing green 600
+     * against red 600, which in a flat list is ten presses and in a grid is one ArrowDown.
+     *
+     * `null` means "the first swatch", so this needs no seeding from the solved palette and
+     * cannot point at a rung that a re-solve removed.
+     */
+    const [tabStop, setTabStop] = useState<string | null>(null);
 
     useLayoutEffect(() => {
         const el = wallRef.current;
@@ -172,6 +185,53 @@ export function PaletteWall() {
         })),
     ];
 
+    const firstCell = familyRows[0] ? `${familyRows[0].id}.${familyRows[0].rungs[0]}` : null;
+    const activeStop = tabStop ?? firstCell;
+
+    /*
+       Move within the grid, and move the tab stop with the focus.
+
+       One handler on the container rather than 66 on the buttons — the same reasoning as the
+       `Escape` listener above, and it is why the swatches need no key handling of their own.
+       The target is found by `data-cell` and focused imperatively: the alternative is holding
+       a ref per swatch, which is 66 refs to express "focus the one I just named".
+
+       Rows have different lengths — grey ships ten rungs to the chromatic eight — so a
+       vertical move CLAMPS the column instead of wrapping or landing on nothing. Moving down
+       from grey 900 lands on the darkest shade the next family has, which is the row's own
+       last column and the honest answer to "what is below this".
+    */
+    const onWallKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+        const KEYS = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
+        if (!KEYS.includes(e.key)) return;
+        const cell = (e.target as HTMLElement).closest<HTMLElement>('[data-cell]');
+        if (!cell) return;
+
+        const [family, rung] = (cell.dataset.cell ?? '').split('.');
+        let row = familyRows.findIndex((r) => r.id === family);
+        if (row < 0) return;
+        let col = familyRows[row].rungs.indexOf(Number(rung));
+        if (col < 0) return;
+
+        const clamp = (n: number, max: number) => Math.max(0, Math.min(max, n));
+        if (e.key === 'ArrowLeft') col = clamp(col - 1, familyRows[row].rungs.length - 1);
+        else if (e.key === 'ArrowRight') col = clamp(col + 1, familyRows[row].rungs.length - 1);
+        else if (e.key === 'Home') col = 0;
+        else if (e.key === 'End') col = familyRows[row].rungs.length - 1;
+        else {
+            row = clamp(row + (e.key === 'ArrowDown' ? 1 : -1), familyRows.length - 1);
+            col = clamp(col, familyRows[row].rungs.length - 1);
+        }
+
+        const next = `${familyRows[row].id}.${familyRows[row].rungs[col]}`;
+        const el = wallRef.current?.querySelector<HTMLElement>(`[data-cell="${next}"]`);
+        if (!el) return;
+        // Arrows scroll the page by default, and here they are moving a selection instead.
+        e.preventDefault();
+        setTabStop(next);
+        el.focus();
+    };
+
     return (
         <>
             {/* Every figure below is counted from the spec, not written into the
@@ -180,7 +240,19 @@ export function PaletteWall() {
                 whose whole claim is that its numbers are derived. */}
             <PageHeading
                 title="Reference palette"
-                tag={`${solution.rungs.size} shades, all derived`}
+                /*
+                   The ANCHOR count, not the shade count.
+
+                   `${solution.rungs.size} shades, all derived` was here, and the bezel's
+                   read-out now says `66 shades` two lines above it — one fact in two places,
+                   which is the thing this codebase keeps catching itself doing. The anchors are
+                   the other half of the same claim and nothing else on screen states them, so
+                   the two together read as the thesis: five hexes in, 66 shades out.
+
+                   Counted, like every other figure on this page, so it cannot say "5" after
+                   somebody adds a family.
+                */
+                tag={`${anchorCount} anchors`}
                 helpLabel="Why these shades are solved rather than chosen"
                 lede={
                     <>
@@ -214,13 +286,25 @@ export function PaletteWall() {
 
             <PaletteActions />
 
-            <div className={`wall${dragging ? ' dragging' : ''}`} ref={attachWall}>
-                {/* No numeric header row: every swatch now carries its own rung,
-                        so ten more numbers above them said nothing twice. */}
-                <div className="wall-head wall-head-label text-muted-foreground font-sans text-xs tracking-wide">
+            <div
+                className={`wall${dragging ? ' dragging' : ''}`}
+                ref={attachWall}
+                onKeyDown={onWallKeyDown}
+                role="group"
+                aria-label="Reference palette — arrow keys move between shades"
+            >
+                {/* No numeric header row: every swatch carries its own rung, so ten more
+                    numbers above them would say it twice. What the axis adds is the
+                    DIRECTION and the PITCH — a graduation whose ticks come from
+                    `--wall-cols`, so it has one tick per column at any number of rungs.
+
+                    `bg-border` is gone from the rule: it was a utility painting the bar
+                    solid, and utilities outrank the components layer, so it was silently
+                    replacing the graduation `app.css` draws. */}
+                <div className="wall-head wall-head-label text-muted-foreground text-xs">
                     lighter → darker
                 </div>
-                <div className="wall-head wall-head-rule bg-border text-xs" />
+                <div className="wall-head wall-head-rule" />
 
                 {familyRows.map((row) => (
                     <FamilyRow
@@ -236,6 +320,8 @@ export function PaletteWall() {
                         // hang off the bottom of a wall that fits on one screen.
                         flip={familyRows.length - familyRows.indexOf(row) <= 2}
                         columns={maxColumns}
+                        activeStop={activeStop}
+                        onStop={setTabStop}
                     />
                 ))}
             </div>
@@ -263,6 +349,7 @@ const BASELINE_FAMILIES = new Set(BASELINE_SPEC.chromatic.families.map((f) => f.
  */
 function PaletteActions() {
     const solution = useStore((s) => s.solution);
+    const spec = useStore((s) => s.spec);
     const graphEff = useStore((s) => s.graph);
     const resetPalette = useStore((s) => s.resetPalette);
     const say = useStore((s) => s.say);
@@ -297,12 +384,75 @@ function PaletteActions() {
         say('figma-variables.json downloaded');
     };
 
+    /*
+       The shared link, which the app could READ and not write.
+
+       `encodeSpecToHash` has been in `export/index.ts` the whole time, and `App.tsx` decodes
+       `#s=` on mount and even explains what a link that carries semantic repoints cannot do
+       here. Nothing called the encoder — so the one path the app's own docblock calls "how a
+       palette proposal travels, and this tool has no other way to show somebody a result" was
+       reachable only by someone who already had a link.
+
+       An empty alias map for the same reason `downloadFigma` passes one: repoints are authored
+       in the semantic token table, which is not part of this tool.
+    */
+    const copyLink = () => {
+        void encodeSpecToHash(spec, new Map())
+            .then((hash) => {
+                const url = `${location.origin}${location.pathname}${location.search}#s=${hash}`;
+                /*
+                   The address bar is updated as well as the clipboard, and that is not
+                   incidental. A link you can see is a link you can copy again by hand if the
+                   clipboard is blocked, drag to another window, or bookmark — and it makes the
+                   button's effect visible rather than purely reported.
+
+                   `replaceState`, not `location.hash =`: assigning to the hash pushes a
+                   history entry, so Back would walk through one entry per copy instead of
+                   leaving the page.
+                */
+                history.replaceState(null, '', url);
+                // Confirm AFTER the write resolves — the same fix the hex copy carries. A
+                // `void` plus an immediate toast announces a copy a blocked clipboard never
+                // performed.
+                return navigator.clipboard
+                    ?.writeText(url)
+                    .then(() => say('Link copied — it carries the whole palette'))
+                    .catch(() =>
+                        say(
+                            'Rejected: the browser blocked the clipboard. The link is in the address bar.',
+                        ),
+                    );
+            })
+            .catch(() => say('Rejected: this palette could not be packed into a link'));
+    };
+
     return (
-        <div className="pal-actions border-b">
+        /* No bottom rule here any more. The plate's own graduation sits 24px below this row
+           and draws the boundary; two hairlines that close together read as a mistake. */
+        <div className="pal-actions">
             <div className="pal-actions-left">
                 <AddFamilyInline />
             </div>
             <div className="pal-actions-right text-muted-foreground">
+                <HistoryControls />
+                {/* Sharing and exporting are the two ways a result LEAVES this app, so they
+                    sit together, and both are outlined rather than filled for the reason the
+                    note below gives. */}
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={copyLink}
+                    disabled={!dirty}
+                    title={
+                        dirty
+                            ? 'A link that carries this whole palette — paste it to anybody with the app'
+                            : 'Nothing edited yet — a link would carry the palette the design system already ships'
+                    }
+                >
+                    <Link2 data-icon="inline-start" />
+                    Copy link
+                </Button>
                 {/* Outlined, not filled, and on this screen that is not a taste call. The
                     theme's primary is a saturated #f54900 and this page exists to judge 66
                     hues against a neutral ground; a solid orange button was the loudest
@@ -365,6 +515,74 @@ function PaletteActions() {
     );
 }
 
+/**
+ * Undo and redo, beside the palette they act on.
+ *
+ * The shortcut in `App.tsx` is the one people will use; these two are how anybody finds out it
+ * exists. A keyboard-only affordance for the app's only recovery path is a feature that is
+ * present and undiscoverable.
+ *
+ * Icons without labels, which is the one place on this page that earns it: undo and redo are
+ * the two glyphs every application on the machine draws the same way, so this is external
+ * consistency rather than mystery meat. The `title` and `aria-label` carry the word AND the
+ * shortcut, because a shortcut nobody is told about might as well not be bound.
+ *
+ * Ghost, not outlined: they are always present and mostly disabled, and two more outlined
+ * boxes beside `Copy link` and `Export for Figma` would read as four peers.
+ */
+function HistoryControls() {
+    const undo = useStore((s) => s.undo);
+    const redo = useStore((s) => s.redo);
+    // Lengths, not the arrays: a boolean derived here would be recomputed per notification
+    // anyway, and a number cannot churn identity the way a sliced array would.
+    const canUndo = useStore((s) => s.past.length > 0);
+    const canRedo = useStore((s) => s.future.length > 0);
+    const say = useStore((s) => s.say);
+
+    /* The modifier the user's own platform prints, so the tooltip is not lying on one of
+       them. `userAgent` rather than the deprecated `navigator.platform`, and a miss is
+       harmless: the listener binds BOTH meta and ctrl, so a wrong glyph names a key that
+       still works. */
+    const mod = /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘' : 'Ctrl+';
+
+    return (
+        /* Utilities, not a new class in `app.css`: the pair only needs to sit tight against
+           each other inside `.pal-actions-right`'s 12px gap, and a rule for that would be a
+           selector with one declaration. `-mr-1` closes the gap on the side facing `Copy
+           link`, so the two glyphs read as one control rather than as two more buttons. */
+        <span className="-mr-1 flex items-center gap-0.5">
+            <Button
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                disabled={!canUndo}
+                onClick={() => {
+                    undo();
+                    say('Undone');
+                }}
+                title={canUndo ? `Undo (${mod}Z)` : 'Nothing to undo'}
+                aria-label={`Undo (${mod}Z)`}
+            >
+                <Undo2 />
+            </Button>
+            <Button
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                disabled={!canRedo}
+                onClick={() => {
+                    redo();
+                    say('Redone');
+                }}
+                title={canRedo ? `Redo (${mod}⇧Z)` : 'Nothing to redo'}
+                aria-label={`Redo (${mod}Shift+Z)`}
+            >
+                <Redo2 />
+            </Button>
+        </span>
+    );
+}
+
 function FamilyRow({
     family,
     label,
@@ -375,6 +593,8 @@ function FamilyRow({
     removable,
     flip,
     columns,
+    activeStop,
+    onStop,
 }: {
     family: string;
     label: string;
@@ -387,6 +607,9 @@ function FamilyRow({
     /** Open the editor upward: this row is near the bottom of the wall. */
     flip: boolean;
     columns: number;
+    /** `family.rung` of the wall's single tab stop, or null before anything is focused. */
+    activeStop: string | null;
+    onStop: (cell: string) => void;
 }) {
     const updateSpec = useStore((s) => s.updateSpec);
     const selectToken = useStore((s) => s.selectToken);
@@ -439,6 +662,9 @@ function FamilyRow({
                     // Anchor to the right edge in the right-hand half, or the
                     // panel runs off the workspace on the darkest rungs.
                     alignEnd={i > columns / 2}
+                    label={label}
+                    isStop={activeStop === `${family}.${rung}`}
+                    onStop={onStop}
                 />
             ))}
             {/* The rung control sits in the row it acts on, in the first empty
@@ -522,6 +748,9 @@ function Swatch({
     onSelect,
     flip,
     alignEnd,
+    label,
+    isStop,
+    onStop,
 }: {
     family: string;
     rung: number;
@@ -529,11 +758,55 @@ function Swatch({
     onSelect: (id: string | null) => void;
     flip: boolean;
     alignEnd: boolean;
+    /** The family's display name — `Electric Blue`, not `electricBlue`. For the spoken name. */
+    label: string;
+    /** This swatch carries the wall's tab stop. */
+    isStop: boolean;
+    onStop: (cell: string) => void;
 }) {
     const ref = rungRef(family, rung);
     const nodeId = `ref.palette.${ref}`;
     const solved = useStore((s) => s.solution.rungs.get(ref));
     const cssVar = rungCssVar(family, rung);
+
+    /*
+       Bring the panel into the viewport when it opens.
+
+       Measured on a 1280x720 window with a swatch on the second row: the panel is 615px tall
+       and opens at y=389, so its bottom lands at 1004 against a workspace that ends at 686.
+       318px below the fold — including the three channel sliders and the "Why is it leaving
+       the ladder?" field, which is the REQUIRED input for recording an override. Nothing on
+       screen said there was more panel down there.
+
+       `block: 'nearest'` because a panel already fully visible must not be scrolled at all:
+       the wall is a comparison instrument and moving it under the cursor is the thing every
+       other fix in this file is avoiding. The height cap in `app.css` handles the panel that
+       is taller than the viewport; this handles the one that merely hangs off the bottom.
+
+       Runs on OPEN only. Re-running on update would move the page mid-drag, which is exactly
+       the bug the always-rendered status slot in `RungInspector` was written to kill.
+
+       `behavior: 'auto'` is explicit, and it is not an oversight.
+
+       `smooth` was the first version and it silently did nothing — measured in the browser, the
+       identical call moved 384px with the default behaviour and 0px with `smooth`. Moving the
+       animation into CSS as `.workspace { scroll-behavior: smooth }` reproduced exactly the
+       same failure, which is the useful part: what this call delivers is not decoration, it is
+       the panel's sliders and its reason field being reachable at all, so it must not depend on
+       an animation any platform is free to decline.
+
+       Stating `auto` rather than leaving it out also pins it against a future
+       `scroll-behavior` on an ancestor, which would otherwise silently take it over.
+
+       `block: 'nearest'` moves the minimum distance and the panel's own `pop-in` covers the
+       jump — and an instant scroll is what `prefers-reduced-motion` would ask for regardless.
+    */
+    const popRef = useRef<HTMLDivElement | null>(null);
+    const isOpenNow = selected === nodeId;
+    useLayoutEffect(() => {
+        if (!isOpenNow) return;
+        popRef.current?.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+    }, [isOpenNow]);
 
     // Ink chosen by measurement, not by a lightness guess — see `prefersDarkInk`.
     const meta = useMemo(() => (solved ? { light: prefersDarkInk(solved.hex) } : null), [solved]);
@@ -570,6 +843,28 @@ function Swatch({
         cssVar,
     ].join('\n');
 
+    /*
+       The spoken name, and it was `"100 f9f9fa"` — sixty-six times, with no family in it.
+
+       A button's accessible name comes from its CONTENT, so the five-line `title` above was
+       never read: what a screen reader got was the rung and the hex, with nothing to say
+       whether this was grey or green. Sixty-six buttons, and no way to tell 600 in one family
+       from 600 in another — on the one screen whose entire job is comparing exactly that.
+
+       Built from the same `provenance` that produces the visible mark, so the label cannot
+       claim a shade is an anchor after the spec stops saying so. The visible rung and hex go
+       `aria-hidden` below, or the name is announced twice over.
+    */
+    const spokenState =
+        p.kind === 'anchor'
+            ? 'anchor, the ladder derives from it'
+            : p.kind === 'override'
+              ? `held off the ladder, ${p.deltaL > 0 ? 'lighter' : 'darker'} by ${Math.abs(p.deltaL).toFixed(3)}`
+              : clamped
+                ? 'derived, chroma clamped by the sRGB gamut'
+                : 'derived from the ladder';
+    const spokenName = `${label} ${rung}, ${solved.hex}, ${spokenState}`;
+
     return (
         <div className="swatch-cell">
             <button
@@ -578,10 +873,13 @@ function Swatch({
                        IS what made the same colour render two different ways in three places.
                        The wall adds behaviour on top; it may not add a different typeface. */
                     SWATCH_FACE,
-                    // The ring is drawn outside the box, so `.swatch`'s z-index carries it
-                    // over the neighbouring cell rather than under it.
-                    'hover:ring-foreground hover:ring-2',
-                    'aria-pressed:ring-primary aria-pressed:ring-2 aria-pressed:shadow-lg',
+                    /* No ring utilities here any more. Hover, pressed and focus were
+                       `hover:ring-2 ring-foreground` / `aria-pressed:ring-primary
+                       aria-pressed:shadow-lg` at this call site, with the stacking and the
+                       sample's own edge in `app.css` — two owners of one `box-shadow`, and
+                       utilities outrank the components layer, so the utility silently replaced
+                       everything the stylesheet set. All three states are in `app.css` now, as
+                       one two-tone ladder measured against 66 arbitrary grounds. */
                     meta.light ? 'light' : 'dark',
                 )}
                 style={{
@@ -592,14 +890,30 @@ function Swatch({
                     ['--stagger' as string]: `${Math.abs(rung - 500) / 100}`,
                 }}
                 aria-pressed={selected === nodeId}
+                /* `aria-pressed` says "selected"; it does not say "this opens a panel". Both
+                   are true of a swatch, and only one of them was announced. */
+                aria-expanded={isOpen}
+                aria-label={spokenName}
+                data-cell={`${family}.${rung}`}
+                /* The roving tab stop. `onFocus` rather than only the arrow handler, so a
+                   click or a Shift+Tab arriving from below also leaves the stop where the
+                   user actually is — otherwise Tab would jump back to the first swatch. */
+                tabIndex={isStop ? 0 : -1}
+                onFocus={() => onStop(`${family}.${rung}`)}
                 onClick={() => onSelect(selected === nodeId ? null : nodeId)}
                 title={title}
             >
                 {/* The rung number, on every swatch. It was in the header row only,
-                so by the seventh family you were counting columns. */}
-                <span className={SWATCH_HEAD}>{rung}</span>
+                so by the seventh family you were counting columns.
+
+                `aria-hidden` on both labels: `aria-label` above already says the family, the
+                rung, the hex and the provenance, and without this the rung and hex are read a
+                second time with no family attached. */}
+                <span className={SWATCH_HEAD} aria-hidden>
+                    {rung}
+                </span>
                 {clamped && <span className="swatch-clamp" aria-hidden />}
-                <span className="swatch-foot">
+                <span className="swatch-foot" aria-hidden>
                     {mark && <span className="swatch-mark rounded-sm tracking-wide">{mark}</span>}
                     <span className={SWATCH_HEX}>{solved.hex.replace('#', '')}</span>
                 </span>
@@ -610,6 +924,7 @@ function Swatch({
             wall moved all of them. This moves nothing. */}
             {isOpen && (
                 <div
+                    ref={popRef}
                     className="swatch-pop rounded-lg border border-input shadow-xl [&>.inspector]:border-0 [&>.inspector]:bg-transparent [&>.inspector]:shadow-none"
                     data-flip={flip ? '' : undefined}
                     data-end={alignEnd ? '' : undefined}
@@ -657,22 +972,25 @@ function GivenColours() {
     }, [resolved]);
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Given, not solved</CardTitle>
-                <CardDescription>
-                    Fixed values — brand identity and chart hues. No anchor or constraint moves
-                    them.
-                </CardDescription>
-            </CardHeader>
+        /* A bench section, not a Card. See `.bench` in `app.css`: three bordered, rounded,
+           elevated boxes stacked in a flex column said "three discrete objects", where this is
+           three sections of one document read in order about the plate above them. */
+        <section className="bench">
+            <span className="bench-index" aria-hidden>
+                01
+            </span>
+            <h2 className="bench-title">Given, not solved</h2>
+            <p className="bench-note">
+                Fixed values — brand identity and chart hues. No anchor or constraint moves them.
+            </p>
             {/* Tiles, not chips.
 
                 These are colours you are meant to LOOK at — brand hues and a ten-series chart
                 ramp — and a chip renders them as a 12px dot beside a name, which is enough to read
                 the list and not enough to compare the colours. `ColourTile` is the wall's own
-                swatch geometry, so this card, the wall above it and the Figma collections below it
-                are now one visual language instead of three. */}
-            <CardContent className="flex flex-col gap-4">
+                swatch geometry, so this section, the plate above it and the Figma collections
+                below it are one visual language instead of three. */}
+            <div className="bench-body flex flex-col gap-4">
                 {groups.map((g) => (
                     <div key={g.label} className="flex flex-col gap-1.5">
                         <div className="figma-wall figma-wall-free">
@@ -702,7 +1020,7 @@ function GivenColours() {
                         {g.note && <div className="text-muted-foreground text-xs">{g.note}</div>}
                     </div>
                 ))}
-            </CardContent>
-        </Card>
+            </div>
+        </section>
     );
 }
