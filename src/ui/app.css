@@ -1641,14 +1641,10 @@ button.status-group {
 /* The scope switch and its consequence, stacked: the control, then a sentence
    naming exactly what will move. An edit that silently changed eight shades
    instead of one would be the worst bug this panel could have. */
+/* The scope switch, unboxed — a control, not a callout. Just the gap to the colour field
+   below it; see `.insp-edit`. */
 .insp-scope {
-    display: flex;
-    flex-direction: column;
-    gap: var(--s3);
-    padding: var(--s4);
-    /* See `.insp-edit` — this is the gap between the scope choice and the colour field. */
     margin-bottom: var(--s5);
-    max-width: 62ch;
 }
 
 /* ------------------------------------------------------- palette actions ---- */

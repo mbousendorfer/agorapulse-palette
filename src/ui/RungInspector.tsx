@@ -82,6 +82,9 @@ export function RungInspector({ family, rung }: { family: string; rung: number }
 
     const [draft, setDraft] = useState(solved?.hex ?? '#000000');
     const [reason, setReason] = useState(override?.reason ?? '');
+    /* The note is off by default and revealed by a link. A shade that already carries one shows
+       it open, so an existing reason is never hidden behind a click. */
+    const [reasonAsked, setReasonAsked] = useState(false);
     const [error, setError] = useState<string | null>(null);
     /* Whether the last channel move asked for a colour sRGB can hold. Starts true: a solved
        rung is in gamut by construction, and so is every hex a re-seed can bring in. */
@@ -383,16 +386,14 @@ export function RungInspector({ family, rung }: { family: string; rung: number }
                         </div>
                     </Alert>
                 ) : (
-                    <div className="insp-scope rounded-md bg-muted border-l">
+                    <div className="insp-scope">
                         {/* Scope is one choice of two, and the `ramp` half is disabled for
                             grey. `ToggleGroup` keeps a disabled option out of the keyboard
                             order, which two `aria-pressed` buttons did not.
 
-                            The consequence of each choice lives in the item's tooltip now,
-                            not in a paragraph under the control. It is the same thing said in
-                            the same words, but only when asked — the panel below already shows
-                            where the value lands, so the wall did not need to carry the
-                            explanation at all times. */}
+                            No box around it: it is a control, not a callout. The consequence of
+                            each choice lives in the item's tooltip, and where the value lands is
+                            in the panel below — the wall carries neither at all times. */}
                         <Segmented
                             type="single"
                             size="sm"
@@ -400,19 +401,34 @@ export function RungInspector({ family, rung }: { family: string; rung: number }
                             onValueChange={(value) => value && setScope(value as typeof scope)}
                             aria-label="What this edit changes"
                         >
-                            <SegmentedItem
-                                value="ramp"
-                                className="px-2 text-xs"
-                                disabled={isGrey}
-                                title={
-                                    isGrey
-                                        ? 'Grey has no hue to give a ramp — its scale is set by its two anchors'
-                                        : `Give ${familySpec?.label ?? family}'s whole ramp this hue and chroma. All ${solution.chromaticRungs.length} shades re-derive; lightness stays on the shared ladder, so ${family}-${rung} lands at ${rampLanding ?? '…'}${rampLanding && rampLanding.toLowerCase() !== draft.toLowerCase() ? ', near your colour rather than on it' : ''}.`
-                                }
-                            >
-                                The whole {isGrey ? 'grey scale' : (familySpec?.label ?? family)}{' '}
-                                ramp
-                            </SegmentedItem>
+                            {isGrey ? (
+                                /* Grey's ramp is disabled — and a disabled control swallows the
+                                   hover, so a `title` on the button itself never shows. The
+                                   explanation goes on a wrapping span, which does receive the
+                                   hover (the button inside is `pointer-events: none`), so the
+                                   reason it is off is reachable rather than a dead grey pill. */
+                                <span
+                                    title="Grey has no hue to give a ramp — its scale is fixed by its two anchors, not by a hue and chroma, so there is nothing for a whole-ramp edit to change."
+                                    className="inline-flex cursor-not-allowed"
+                                >
+                                    <SegmentedItem
+                                        value="ramp"
+                                        className="px-2 text-xs"
+                                        disabled
+                                        tabIndex={-1}
+                                    >
+                                        The whole grey scale ramp
+                                    </SegmentedItem>
+                                </span>
+                            ) : (
+                                <SegmentedItem
+                                    value="ramp"
+                                    className="px-2 text-xs"
+                                    title={`Give ${familySpec?.label ?? family}'s whole ramp this hue and chroma. All ${solution.chromaticRungs.length} shades re-derive; lightness stays on the shared ladder, so ${family}-${rung} lands at ${rampLanding ?? '…'}${rampLanding && rampLanding.toLowerCase() !== draft.toLowerCase() ? ', near your colour rather than on it' : ''}.`}
+                                >
+                                    The whole {familySpec?.label ?? family} ramp
+                                </SegmentedItem>
+                            )}
                             <SegmentedItem
                                 value="shade"
                                 className="px-2 text-xs"
@@ -522,18 +538,37 @@ export function RungInspector({ family, rung }: { family: string; rung: number }
                     {statusLine}
                 </p>
 
-                {!isAnchor && (
-                    <label className="insp-reason [&_span]:text-xs [&_span]:text-muted-foreground">
-                        <span>Why is it leaving the ladder?</span>
-                        <Input
-                            type="text"
-                            value={reason}
-                            placeholder="recorded alongside the value"
-                            onChange={(e) => setReason(e.target.value)}
-                            onBlur={(e) => override && commit(draft, e.currentTarget.value)}
-                        />
-                    </label>
-                )}
+                {/*
+                   The note is optional and out of the way until asked for.
+
+                   Most edits do not want a sentence recorded against them, and a permanent
+                   empty field said otherwise — it read as a question waiting to be answered. So
+                   it is a link now, and the input appears only when there is something to say.
+                   A shade that already carries a reason opens straight to it, so nothing an
+                   earlier edit recorded is hidden.
+                */}
+                {!isAnchor &&
+                    (reasonAsked || reason.trim() !== '' ? (
+                        <label className="insp-reason [&_span]:text-xs [&_span]:text-muted-foreground">
+                            <span>A note, recorded alongside the value</span>
+                            <Input
+                                type="text"
+                                value={reason}
+                                autoFocus={reasonAsked && reason.trim() === ''}
+                                placeholder="why this shade is what it is"
+                                onChange={(e) => setReason(e.target.value)}
+                                onBlur={(e) => override && commit(draft, e.currentTarget.value)}
+                            />
+                        </label>
+                    ) : (
+                        <button
+                            type="button"
+                            className="text-primary mt-4 text-xs hover:underline"
+                            onClick={() => setReasonAsked(true)}
+                        >
+                            Add a note
+                        </button>
+                    ))}
             </div>
         </section>
     );

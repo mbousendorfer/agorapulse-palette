@@ -47,6 +47,7 @@ import { ChannelEditor } from './ChannelEditor';
 import { Chip } from './Chip';
 
 import { contrastHex, hexToOklch, inkOn, normaliseHex } from '../color/oklab';
+import { suggestColourName } from '../color/name';
 import { deriveChromaFactor } from '../engine/chroma';
 import { normaliseScopes, type Scope } from '../engine/scope';
 import { solvePalette } from '../engine/solve';
@@ -98,7 +99,15 @@ function AddFamilyForm({ onDone }: { onDone: () => void }) {
      */
     const current = useStore((s) => s.solution);
 
-    const [name, setName] = useState('');
+    /**
+     * `null` until the field is touched, which is what lets the suggestion fill it live.
+     *
+     * While it is null the input SHOWS the name suggested from the colour and follows it as the
+     * colour changes — the same move Coolors makes. The first keystroke sets it to a string and
+     * the suggestion stops driving it; clearing the field back to empty is still an edited
+     * value, so the name does not snap back mid-typing.
+     */
+    const [typedName, setTypedName] = useState<string | null>(null);
     /** Brand, product, or both. Nothing declared until it is — the same default a shipped family has. */
     const [scope, setScope] = useState<Scope[]>([]);
     /** One colour, edited any way you like. Where the dialog opens: a mid magenta. */
@@ -107,6 +116,22 @@ function AddFamilyForm({ onDone }: { onDone: () => void }) {
        it, because only it knows the requested triple — a hex is always in gamut. */
     const [requestedInGamut, setRequestedInGamut] = useState(true);
 
+    /**
+     * A name suggested from the colour — computed, not looked up. See `color/name.ts`.
+     *
+     * A refusal (the hex field mid-edit) leaves it empty, which just means the input falls back
+     * to its placeholder, exactly as before this feature existed.
+     */
+    const suggestedName = useMemo(() => {
+        try {
+            return suggestColourName(normaliseHex(hex));
+        } catch {
+            return '';
+        }
+    }, [hex]);
+
+    /** What the field shows, and what the family is named on commit. The suggestion until typed. */
+    const name = typedName ?? suggestedName;
     const id = toFamilyId(name);
     const taken = spec.chromatic.families.some((f) => f.id === id);
 
@@ -221,7 +246,7 @@ function AddFamilyForm({ onDone }: { onDone: () => void }) {
                 ...(normaliseScopes(scope) ? { scope: normaliseScopes(scope) } : {}),
             });
         });
-        setName('');
+        setTypedName(null);
         setScope([]);
         onDone();
     };
@@ -373,9 +398,20 @@ function AddFamilyForm({ onDone }: { onDone: () => void }) {
                             type="text"
                             value={name}
                             placeholder="e.g. Magenta"
-                            onChange={(e) => setName(e.target.value)}
+                            /* The first keystroke takes the field off the suggestion; clearing
+                               it back to empty keeps it off, so the name never snaps back while
+                               you type. */
+                            onChange={(e) => setTypedName(e.target.value)}
                             className="w-48"
                         />
+                        {/* A quiet mark that the name was proposed, not typed — otherwise a
+                            field you never touched reads as one you did. Gone the moment you
+                            edit it. */}
+                        {typedName === null && suggestedName && (
+                            <span className="text-muted-foreground shrink-0 text-xs">
+                                suggested — edit freely
+                            </span>
+                        )}
                         {cssVar && (
                             <span className="text-muted-foreground font-mono text-xs">
                                 {cssVar}
