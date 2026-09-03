@@ -69,16 +69,16 @@ export function RungInspector({ family, rung }: { family: string; rung: number }
     /**
      * What the edit is allowed to move.
      *
-     * `shade` records an off-ladder exception: one rung leaves the ladder and the
-     * other 65 do not move. `ramp` reads the new colour's HUE and CHROMA and gives
-     * them to the whole family, so all eight of its rungs re-derive.
+     * `ramp` reads the new colour's HUE and CHROMA and gives them to the whole family, so all
+     * eight of its rungs re-derive. `shade` records an off-ladder exception: one rung leaves
+     * the ladder and the other 65 do not move.
      *
-     * They are genuinely different intentions and the panel used to offer only the
-     * first — so wanting a slightly different green meant pinning eight
-     * exceptions by hand, each one a recorded deviation from a ladder it was
-     * actually agreeing with.
+     * `ramp` is the default because it is the one that AGREES with the ladder — wanting a
+     * slightly different green is re-hueing the family, not pinning eight exceptions to a
+     * ladder you actually accept. `shade` is the deliberate departure, so it is the one you
+     * reach for. Grey has no hue to give a ramp, so it starts on `shade`, its only option.
      */
-    const [scope, setScope] = useState<'shade' | 'ramp'>('shade');
+    const [scope, setScope] = useState<'shade' | 'ramp'>(isGrey ? 'shade' : 'ramp');
 
     const [draft, setDraft] = useState(solved?.hex ?? '#000000');
     const [reason, setReason] = useState(override?.reason ?? '');
@@ -386,7 +386,13 @@ export function RungInspector({ family, rung }: { family: string; rung: number }
                     <div className="insp-scope rounded-md bg-muted border-l">
                         {/* Scope is one choice of two, and the `ramp` half is disabled for
                             grey. `ToggleGroup` keeps a disabled option out of the keyboard
-                            order, which two `aria-pressed` buttons did not. */}
+                            order, which two `aria-pressed` buttons did not.
+
+                            The consequence of each choice lives in the item's tooltip now,
+                            not in a paragraph under the control. It is the same thing said in
+                            the same words, but only when asked — the panel below already shows
+                            where the value lands, so the wall did not need to carry the
+                            explanation at all times. */}
                         <Segmented
                             type="single"
                             size="sm"
@@ -395,45 +401,26 @@ export function RungInspector({ family, rung }: { family: string; rung: number }
                             aria-label="What this edit changes"
                         >
                             <SegmentedItem
-                                value="shade"
-                                className="px-2 text-xs"
-                                title="Hold this one rung off the ladder, and record why"
-                            >
-                                This shade only
-                            </SegmentedItem>
-                            <SegmentedItem
                                 value="ramp"
                                 className="px-2 text-xs"
                                 disabled={isGrey}
                                 title={
                                     isGrey
                                         ? 'Grey has no hue to give a ramp — its scale is set by its two anchors'
-                                        : `Give ${familySpec?.label ?? family}'s whole ramp this hue and chroma`
+                                        : `Give ${familySpec?.label ?? family}'s whole ramp this hue and chroma. All ${solution.chromaticRungs.length} shades re-derive; lightness stays on the shared ladder, so ${family}-${rung} lands at ${rampLanding ?? '…'}${rampLanding && rampLanding.toLowerCase() !== draft.toLowerCase() ? ', near your colour rather than on it' : ''}.`
                                 }
                             >
                                 The whole {isGrey ? 'grey scale' : (familySpec?.label ?? family)}{' '}
                                 ramp
                             </SegmentedItem>
+                            <SegmentedItem
+                                value="shade"
+                                className="px-2 text-xs"
+                                title={`Hold this one rung off the ladder, and record why. The other ${solution.rungs.size - 1} shades stay exactly where they are.`}
+                            >
+                                This shade only
+                            </SegmentedItem>
                         </Segmented>
-                        <span className="insp-scope-note text-xs text-muted-foreground [&_b]:font-semibold leading-normal">
-                            {scope === 'shade' ? (
-                                <>
-                                    One rung leaves the ladder. The other {solution.rungs.size - 1}{' '}
-                                    shades stay exactly where they are.
-                                </>
-                            ) : (
-                                <>
-                                    All {solution.chromaticRungs.length} of this family's shades
-                                    re-derive from this hue and chroma. Its lightness stays on the
-                                    shared ladder, so {family}-{rung} lands at{' '}
-                                    <b className="font-mono">{rampLanding ?? '—'}</b>
-                                    {rampLanding &&
-                                    rampLanding.toLowerCase() !== draft.toLowerCase()
-                                        ? ' — near your colour, not on it.'
-                                        : '.'}
-                                </>
-                            )}
-                        </span>
                     </div>
                 )}
 

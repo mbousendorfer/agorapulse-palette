@@ -1651,10 +1651,6 @@ button.status-group {
     max-width: 62ch;
 }
 
-.insp-scope-note b {
-    color: var(--foreground);
-}
-
 /* ------------------------------------------------------- palette actions ---- */
 
 /* Above the wall, because these act ON it.
