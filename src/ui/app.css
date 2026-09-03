@@ -999,40 +999,216 @@ pre.code {
    The prose is the label and the value is the data, so the value carries the
    weight and the prose stays quiet. */
 
-.chain {
-    margin: 0 0 16px;
-    padding: 0;
-    list-style: none;
-    counter-reset: chain;
-}
+/* ------------------------------------------------------ how it is built --- */
 
-.chain li {
+/*
+   Two pictures, one axis. The fold that used to be input rows over a numbered list of
+   equations is a set of anchor CARDS and a drawn LADDER now — see `EngineRules.tsx` for why. The
+   rules here are layout only; every number and colour in the figure comes from the solution.
+*/
+.eng {
     display: flex;
-    align-items: baseline;
-    gap: 10px;
-    padding: 5px 0;
-    counter-increment: chain;
+    flex-direction: column;
+    gap: var(--s6);
 }
 
-.chain li::before {
-    content: counter(chain);
-    flex: 0 0 auto;
-    width: 16px;
-    font: var(--text-xs) var(--font-mono);
+.eng-sec {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s4);
+}
+
+.eng-head {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s1);
+    max-width: 78ch;
+}
+
+.eng-foot {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--s3);
+}
+
+/* The anchors: one card each, a hairline apart. No shadow — the fold forbids nested elevation,
+   and a hairline is enough to say "one thing" five times over. */
+.anchor-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: var(--s3);
+}
+
+.anchor-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s2);
+    padding: var(--s3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+}
+
+.anchor-card.unhooked {
+    border-style: dashed;
+}
+
+.anchor-card-head {
+    display: flex;
+    align-items: center;
+    gap: var(--s3);
+}
+
+.anchor-card-swatch {
+    width: 44px;
+    height: 44px;
+    flex: none;
+}
+
+.anchor-card-id {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s1);
+    min-width: 0;
+}
+
+/* The role takes two lines at most, and reserves them, so five cards in a row share a baseline
+   for the read-out and the foot beneath. */
+.anchor-card-role {
+    line-height: 1.45;
+    min-height: calc(2 * 1.45em);
+}
+
+.anchor-card-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s2);
+    margin-top: auto;
+}
+
+/*
+   THE LADDER.
+
+   A row per scale: a label column, then a track. Everything on a track is positioned by
+   `left: <pct>%` from the lightness — the same axis for both rows, so a grey rung and a chromatic
+   rung at the same lightness sit in the same column. The track scrolls on a narrow screen rather
+   than letting marks pile onto one another: the picture is about POSITION, and a squeezed one
+   would say the wrong thing.
+*/
+.ladder {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s4);
+    overflow-x: auto;
+    scrollbar-width: thin;
+    padding-bottom: var(--s1);
+}
+
+.ladder-row {
+    display: grid;
+    grid-template-columns: 112px minmax(600px, 1fr);
+    gap: var(--s4);
+    align-items: end;
+    /* Room on the right for the last mark's label, which is centred on the mark. */
+    padding-right: 24px;
+}
+
+.ladder-label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    /* Level with the rail, not the bottom of the tags. */
+    padding-bottom: 38px;
+    white-space: nowrap;
+}
+
+.ladder-track {
+    position: relative;
+    height: 110px;
+}
+
+/* The rail: the lightness axis itself. Mixed from `--muted-foreground`, like the wall's
+   graduation, because `--border` on the page ground is not there. */
+.ladder-rail {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 52px;
+    height: 1px;
+    background: color-mix(in oklab, var(--muted-foreground) 45%, transparent);
+}
+
+.ladder-mark {
+    position: absolute;
+    top: 18px;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    white-space: nowrap;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+}
+
+.ladder-num {
+    font-size: 11px;
+    line-height: 1;
+    color: var(--foreground);
+}
+
+/* The rung: a bar across the rail, filled with the lightness it is. */
+.ladder-bar {
+    width: 12px;
+    height: 34px;
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px var(--border);
+}
+
+.ladder-val {
+    font-size: 10px;
+    line-height: 1;
     color: var(--muted-foreground);
 }
 
-.chain li > span {
-    flex: 1;
+/* The one word: prose, so the interface face. */
+.ladder-tag {
+    font-family: var(--font-sans);
+    font-size: 10.5px;
+    line-height: 1;
+    color: var(--muted-foreground);
 }
 
-.chain li > span em {
-    color: var(--foreground);
+/* An anchor at its own lightness, above the rail, joined to the rung it feeds. The ring is the
+   page ground, so a dot sitting on a link or on a mark keeps its edge. */
+.ladder-dot {
+    position: absolute;
+    top: 4px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    transform: translateX(-50%);
+    box-shadow: 0 0 0 2px var(--background);
+    z-index: 1;
 }
 
-.chain li > b {
-    font: 13px var(--font-mono);
+.ladder-link {
+    position: absolute;
+    top: 8px;
+    height: 1px;
+    background: color-mix(in oklab, var(--muted-foreground) 55%, transparent);
+}
+
+.ladder-legend {
+    color: var(--muted-foreground);
+    line-height: 1.7;
+    max-width: 100ch;
+}
+
+.ladder-legend b {
     color: var(--foreground);
+    font-weight: 600;
 }
 
 /* --------------------------------------------------------------- markers --- */

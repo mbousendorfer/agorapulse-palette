@@ -1,39 +1,30 @@
 /**
- * The five hexes the palette is seated on, and what follows from them.
+ * How the palette is built — drawn, not described.
  *
- * This panel used to hold twenty-six controls across five tabs — every knob the spec had,
- * exposed because it was settable. It is five now, and the cut was made from measurement:
- * each of the twenty-six was nudged, the palette re-solved, and the changed rungs counted.
+ * This fold used to be five input rows and a numbered list of six equations. Everything in it
+ * was true and almost none of it could be SEEN: "rung 500 ← mean of the electricBlue.500
+ * anchor's lightness and the orange.500 anchor's lightness · 0.6711" is a sentence about a
+ * position, read by somebody who has a screen in front of them that could simply show the
+ * position.
  *
- * Nothing was dead. The weakest still moved 4 rungs of 66 and the strongest 49, so
- * "useless" was never the right charge. What the numbers actually said is that reach is
- * wildly uneven and the five ANCHORS carry it — 35, 37 and 49 rungs for the three brand
- * anchors, against 4 to 7 for a light-end chroma ceiling. Decision #1 has said the same
- * thing in words the whole time: you move an anchor, or you declare an off-ladder exception
- * with a recorded reason.
+ * Two pictures now, in the order the derivation runs:
  *
- * Two findings worth keeping about what went:
+ *   1. THE ANCHORS, as cards. A swatch you can open, the hex you can type, and — the part the
+ *      rows never said — the anchor's ROLE in one line: "seats rung 700, the whole ladder hangs
+ *      from it", "half of rung 500, averaged with Orange 500", "light end of the grey scale".
+ *      Under it the measured reach, and the way to let it go.
  *
- *   `contrast700on200` and `contrast800on200` are BINDING at baseline — zero slack, both of
- *   them. Lowering either breaks it immediately; the only legal direction is to tighten.
- *   They are the rules the palette was solved against, not settings, and a slider implied
- *   otherwise. `Rules & audit` reports their state, which is where a rule belongs.
+ *   2. THE LADDER, as a ladder. One lightness axis, light on the left and dark on the right like
+ *      the wall above, and every rung drawn AT ITS LIGHTNESS — so a plateau is visibly a plateau,
+ *      the 500→700 interval is visibly the one that is halved, and the two brand anchors visibly
+ *      sit either side of the 500 they average to. Each rung carries the one word that says how
+ *      it got there: anchor, mean, solved, ÷2, ÷3, +step. Grey draws its own scale underneath,
+ *      on the same axis, so its degressive light end and even tail can be compared to the
+ *      chromatic one by eye. A legend defines the six words once.
  *
- *   The two plateau divisors and grey's own `step100` were added by me with the
- *   justification "they were settable in the spec and unreachable from the app, which is
- *   the worst of both". That is a reason to expose something only if someone needs it.
- *   Settable is not needed — the same mistake as the curve view, in miniature.
- *
- * Everything cut is still in `spec/palette.baseline.json` and still solved from; it is
- * edited there, by someone changing the engine, rather than by a slider on a page whose
- * subject is the palette.
- *
- * The derivation stays, because it is the answer to this panel's own heading and it is a
- * read-out rather than an option: six lines showing how five hexes become a ladder.
- *
- * "Five" is the shipped count, not a fixed one. Each anchor can be UNHOOKED from this panel or
- * from its shade's inspector: the numbers it fed the ladder stay in the spec, its shade derives,
- * and the heading and the derivation lines re-read from the spec — see `engine/anchors.ts`.
+ * Every figure is still computed: reach by re-solving (`engine/reach.ts`), positions from the
+ * solution, roles from the spec's own `rung700From` / `rung500From`. Nothing here is a caption
+ * that can go stale when an anchor is unhooked or a rung is added.
  */
 
 import { useMemo, useState } from 'react';
@@ -47,7 +38,13 @@ import { countAnchors, detachAnchor, detachGreyAnchor } from '../engine/anchors'
 import { evaluateConstraints } from '../engine/constraints';
 import { greyEnd } from '../engine/grey';
 import { anchorReach } from '../engine/reach';
-import { isGreyHex } from '../engine/types';
+import {
+    isGreyHex,
+    isRungRef,
+    rungRef,
+    type PaletteSolution,
+    type PaletteSpec,
+} from '../engine/types';
 import { useResetOn } from './useDerived';
 import { paletteEditCount, useStore } from '../state/store';
 
@@ -55,38 +52,52 @@ export function EngineRules() {
     const spec = useStore((s) => s.spec);
     const solution = useStore((s) => s.solution);
     const updateSpec = useStore((s) => s.updateSpec);
+    const say = useStore((s) => s.say);
 
     /*
        Ten solves, memoised on the spec.
 
-       `anchorReach` nudges each of the five anchors both ways and re-solves — 3.3 ms a solve, so
-       ~33 ms when the spec changes and nothing while it does not. That is affordable HERE and
-       nowhere near the wall: this fold is closed by default and re-renders on a committed edit,
-       not on a pointer move.
+       `anchorReach` nudges each anchor both ways and re-solves — 3.3 ms a solve, so ~33 ms when
+       the spec changes and nothing while it does not. Affordable HERE and nowhere near the wall:
+       this fold is closed by default and re-renders on a committed edit, not on a pointer move.
     */
     const reach = useMemo(() => anchorReach(spec), [spec]);
     const anchorCount = countAnchors(spec);
-    const say = useStore((s) => s.say);
-    // One toast for every row: what was unhooked, and that it is derived from here on.
-    const unhookGrey = (rung: 100 | 1000) => {
-        updateSpec((draft) => detachGreyAnchor(draft, rung));
-        say(`grey ${rung} unhooked — derived now`);
-    };
 
     // Memoised: ~30 contrastHex calls, and the panel re-renders on every palette edit.
     const constraints = useMemo(() => evaluateConstraints(spec, solution), [spec, solution]);
     const violated = constraints.filter((c) => c.status === 'violated');
     const binding = constraints.filter((c) => c.status === 'binding');
-    const d = solution.derived;
 
     /*
-       Folded by default, and plain `useState`.
-
-       This used to follow `paletteView` from the store — unfolded in the curve view, folded
-       in the grid. Both the view and the field are gone, and folded is the right default on
-       its own terms: the palette above is the subject.
+       Folded by default, and plain `useState`. Folded is the right default on its own terms:
+       the palette above is the subject.
     */
     const [open, setOpen] = useState(false);
+
+    /**
+     * What an anchor DOES, in one line, read off the spec rather than assumed. The wording is
+     * the derivation's own: a rung is seated, halved, or pinned.
+     */
+    const roleOf = (family: string, rung: number): string => {
+        const ref = rungRef(family, rung);
+        const c = spec.chromatic;
+        if (isRungRef(c.rung700From) && c.rung700From === ref) {
+            return 'Seats rung 700. The whole ladder hangs from this lightness.';
+        }
+        const at = c.rung500From.findIndex((s) => isRungRef(s) && s === ref);
+        if (at >= 0) {
+            const other = c.rung500From[at === 0 ? 1 : 0];
+            const otherName = isRungRef(other)
+                ? (() => {
+                      const [fam, r] = other.split('.');
+                      return `${c.families.find((f) => f.id === fam)?.label ?? fam} ${r}`;
+                  })()
+                : `a chosen lightness of ${other.L.toFixed(4)}`;
+            return `Half of rung 500 — averaged with ${otherName}. Neither sits on the ladder itself.`;
+        }
+        return 'Pins its own shade. The ladder does not read it.';
+    };
 
     return (
         <details
@@ -102,46 +113,35 @@ export function EngineRules() {
                         : `${spec.chromatic.families.length} hues on one ladder · ${spec.overrides.length} shades held off it`}
                 </em>
             </summary>
-            {/* No Card inside the fold. This was a bordered, rounded, elevated box inside a
-                `<details>` inside the page — three containers for one level of content, and the
-                one thing this file's own house rules forbid outright is nested elevation. The
-                fold's own rule is the section boundary; the content needs nothing else. */}
-            <div className="fold-body">
-                <div className="flex flex-col gap-8">
-                    <div className="flex flex-col gap-3">
+            {/* No Card inside the fold: the fold's own rule is the section boundary. The two
+                pictures below are separated by space and a heading, not by boxes. */}
+            <div className="fold-body eng">
+                {/* ------------------------------------------------ 1. the anchors ---- */}
+                <section className="eng-sec">
+                    <header className="eng-head">
                         {/* Counted, like every figure on this page: "five" would be wrong the
                             moment one is unhooked. */}
-                        <h3 className="text-foreground text-xs font-semibold">
+                        <h3 className="text-foreground text-sm font-semibold">
                             {anchorCount === 0
                                 ? 'No anchors'
-                                : `The ${anchorCount === 1 ? 'one' : anchorCount} anchor${anchorCount === 1 ? '' : 's'}`}
+                                : `${anchorCount === 1 ? 'One' : anchorCount} anchor${anchorCount === 1 ? '' : 's'}`}
                         </h3>
-                        <p className="text-muted-foreground max-w-prose text-xs">
-                            {anchorCount === 0 ? (
-                                <>
-                                    Every anchor has been unhooked. The ladder is seated on the
-                                    lightnesses they left behind, and all {solution.rungs.size}{' '}
-                                    shades are derived.
-                                </>
-                            ) : (
-                                <>
-                                    Every other shade is derived from these. The figure on each row
-                                    is measured, not remembered: it is how many of the{' '}
-                                    {solution.rungs.size} shades change hex when that anchor's
-                                    lightness moves by 0.01 — so it answers what you will see move,
-                                    rather than what structurally depends on it. Unhooking one keeps
-                                    the numbers it fed the ladder and lets its shade derive.
-                                </>
-                            )}
+                        <p className="text-muted-foreground text-xs">
+                            {anchorCount === 0
+                                ? `Every anchor has been unhooked. The ladder is seated on the lightnesses they left behind, and all ${solution.rungs.size} shades are derived.`
+                                : `Hexes somebody decided. Every other shade is solved from these — "moves" is how many of the ${solution.rungs.size} shades change hex when the anchor's lightness moves by 0.01, measured by re-solving.`}
                         </p>
+                    </header>
+                    <div className="anchor-cards">
                         {spec.chromatic.families
                             .filter((f) => Object.keys(f.anchors).length > 0)
                             .map((family) =>
                                 Object.entries(family.anchors).map(([rung, hex]) => (
-                                    <AnchorField
+                                    <AnchorCard
                                         key={`${family.id}.${rung}`}
                                         label={`${family.label} ${rung}`}
                                         hex={hex as string}
+                                        role={roleOf(family.id, Number(rung))}
                                         moves={reach.get(`${family.id}.${rung}`)}
                                         onChange={(next) =>
                                             updateSpec((draft) => {
@@ -162,139 +162,435 @@ export function EngineRules() {
                                     />
                                 )),
                             )}
-                        {isGreyHex(spec.grey.anchor100) ? (
-                            <AnchorField
-                                label="Grey 100"
-                                hex={spec.grey.anchor100}
-                                moves={reach.get('grey.100')}
-                                onChange={(next) =>
-                                    updateSpec((x) => void (x.grey.anchor100 = next))
-                                }
-                                onUnhook={() => unhookGrey(100)}
-                            />
-                        ) : (
-                            <UnhookedEnd label="Grey 100" end={greyEnd(spec.grey.anchor100)} />
-                        )}
-                        {isGreyHex(spec.grey.anchor1000) ? (
-                            <AnchorField
-                                label="Grey 1000"
-                                hex={spec.grey.anchor1000}
-                                moves={reach.get('grey.1000')}
-                                onChange={(next) =>
-                                    updateSpec((x) => void (x.grey.anchor1000 = next))
-                                }
-                                onUnhook={() => unhookGrey(1000)}
-                            />
-                        ) : (
-                            <UnhookedEnd label="Grey 1000" end={greyEnd(spec.grey.anchor1000)} />
-                        )}
-                    </div>
-
-                    <div className="flex flex-col gap-4">
-                        <h3 className="text-foreground text-xs font-semibold">
-                            What follows from them
-                        </h3>
-                        {/* Read-only, and the reason this panel keeps its heading honest:
-                                five inputs with no shown derivation would not be "how this
-                                palette is built". The divisors named here are still in the
-                                spec — they are just edited there rather than on a slider. */}
-                        <ol className="chain [&_li]:border-b [&_li]:text-xs [&_li]:text-muted-foreground [&_li>span_em]:not-italic">
-                            {/* From `derived.ladderSources`, so an unhooked anchor reads
-                                "chosen L 0.5197" here the same instant it does everywhere. */}
-                            <li>
-                                <span>rung 700 &larr; {sourceSentence(d.ladderSources.L700)}</span>
-                                <b>{d.L700.toFixed(4)}</b>
-                            </li>
-                            <li>
-                                <span>
-                                    rung 500 &larr; mean of{' '}
-                                    {sourceSentence(d.ladderSources.L500[0])} and{' '}
-                                    {sourceSentence(d.ladderSources.L500[1])}
-                                </span>
-                                <b>{d.L500.toFixed(4)}</b>
-                            </li>
-                            <li>
-                                <span>
-                                    low plateau step = (500 &minus; 700) /{' '}
-                                    {spec.chromatic.lowPlateauDivisor}
-                                </span>
-                                <b>{d.lowStep.toFixed(4)}</b>
-                            </li>
-                            <li>
-                                <span>
-                                    rung 200 <strong>solved</strong> by contrast(700, 200) — binding
-                                    family <em>{d.rung200Witness}</em>
-                                </span>
-                                <b>{d.L200.toFixed(4)}</b>
-                            </li>
-                            <li>
-                                <span>
-                                    high plateau step = (200 &minus; 500) /{' '}
-                                    {spec.chromatic.highPlateauDivisor}
-                                </span>
-                                <b>{d.highStep.toFixed(4)}</b>
-                            </li>
-                            <li>
-                                <span>rung 100 = 200 + step</span>
-                                <b>{solution.chromaticLadder[0].toFixed(4)}</b>
-                            </li>
-                        </ol>
-
-                        {/*
-                               One line, not a third copy of the table.
-
-                               `Rules & audit` already lists all seven with signed slack and
-                               named witnesses, and the status bar already carries this same
-                               count. What this adds is immediacy: nudge an anchor and know
-                               here whether you broke something, without leaving the screen.
-                               Anything more than the count would be duplication.
-                            */}
-                        <p className="text-xs">
-                            {violated.length ? (
-                                <span className="text-destructive">
-                                    {violated.length} of {constraints.length} rules broken —{' '}
-                                    {violated.map((c) => c.id).join(', ')}
-                                </span>
+                        {([100, 1000] as const).map((rung) => {
+                            const key = rung === 100 ? 'anchor100' : 'anchor1000';
+                            const end = spec.grey[key];
+                            const role =
+                                rung === 100
+                                    ? 'Light end of the grey scale. Grey has no hue; its two ends set its lightness and its chroma.'
+                                    : 'Dark end of the grey scale. Rung 800 is solved between the two ends for 4.5 on the 200.';
+                            return isGreyHex(end) ? (
+                                <AnchorCard
+                                    key={`grey.${rung}`}
+                                    label={`Grey ${rung}`}
+                                    hex={end}
+                                    role={role}
+                                    moves={reach.get(`grey.${rung}`)}
+                                    onChange={(next) =>
+                                        updateSpec((x) => void (x.grey[key] = next))
+                                    }
+                                    onUnhook={() => {
+                                        updateSpec((draft) => detachGreyAnchor(draft, rung));
+                                        say(`grey ${rung} unhooked — derived now`);
+                                    }}
+                                />
                             ) : (
-                                <span className="text-muted-foreground">
-                                    All {constraints.length} rules hold
-                                    {binding.length > 0 && (
-                                        <>
-                                            {' · '}
-                                            <span className="text-foreground font-medium">
-                                                {binding.length} with no slack
-                                            </span>
-                                        </>
-                                    )}
-                                </span>
-                            )}
-                            <span className="text-muted-foreground">
-                                {' '}
-                                · the slack and the witness for each are on Rules &amp; audit
-                            </span>
-                        </p>
+                                <UnhookedCard
+                                    key={`grey.${rung}`}
+                                    label={`Grey ${rung}`}
+                                    role={role}
+                                    end={greyEnd(end)}
+                                />
+                            );
+                        })}
                     </div>
+                </section>
 
-                    {/* Reachable whenever the panel is open — the one destructive control
-                            on the page, so it sits at the bottom of the fold rather than beside
-                            the wall. */}
-                    <div className="self-start">
-                        <ResetEverything />
-                    </div>
-                </div>
+                {/* ------------------------------------------------- 2. the ladder ---- */}
+                <section className="eng-sec">
+                    <header className="eng-head">
+                        <h3 className="text-foreground text-sm font-semibold">
+                            The ladder they seat
+                        </h3>
+                        <p className="text-muted-foreground text-xs">
+                            A rung is a lightness. Drawn at true position, lighter on the left like
+                            the wall — so the plateaus, the halved interval and the two brand
+                            anchors either side of their mean can be read off rather than worked
+                            out. The word under each rung is how it got there.
+                        </p>
+                    </header>
+                    <LadderFigure spec={spec} solution={solution} />
+                </section>
+
+                {/* ------------------------------------------------- 3. the rules ----- */}
+                <footer className="eng-foot">
+                    {/*
+                       One line, not a third copy of the table. `Rules & audit` lists all seven
+                       with signed slack and named witnesses; the bezel carries the same count.
+                       What this adds is immediacy: nudge an anchor and know here whether you
+                       broke something.
+                    */}
+                    <p className="text-xs">
+                        {violated.length ? (
+                            <span className="text-destructive">
+                                {violated.length} of {constraints.length} rules broken —{' '}
+                                {violated.map((c) => c.id).join(', ')}
+                            </span>
+                        ) : (
+                            <span className="text-muted-foreground">
+                                All {constraints.length} rules hold
+                                {binding.length > 0 && (
+                                    <>
+                                        {' · '}
+                                        <span className="text-foreground font-medium">
+                                            {binding.length} with no slack
+                                        </span>
+                                    </>
+                                )}
+                            </span>
+                        )}
+                        <span className="text-muted-foreground">
+                            {' '}
+                            · the slack and the witness for each are on Rules &amp; audit
+                        </span>
+                    </p>
+                    {/* Reachable whenever the panel is open — the one destructive control on
+                        the page, so it sits at the bottom of the fold rather than beside the
+                        wall. */}
+                    <ResetEverything />
+                </footer>
             </div>
         </details>
     );
 }
 
+// ------------------------------------------------------------------ the ladder ----
+
+/** The one word that says how a chromatic rung got its lightness, by position on the ladder. */
+function chromaticTag(i: number, spec: PaletteSpec): string {
+    switch (i) {
+        case 0:
+            return '+step';
+        case 1:
+            return 'solved';
+        case 2:
+        case 3:
+            return `÷${spec.chromatic.highPlateauDivisor}`;
+        case 4:
+            return 'mean';
+        case 6:
+            return isRungRef(spec.chromatic.rung700From) ? 'anchor' : 'chosen';
+        default:
+            return `÷${spec.chromatic.lowPlateauDivisor}`;
+    }
+}
+
+/** Likewise for grey, whose ten rungs have their own derivation. */
+function greyTag(i: number, spec: PaletteSpec): string {
+    if (i === 0) return isGreyHex(spec.grey.anchor100) ? 'anchor' : 'chosen';
+    if (i === 9) return isGreyHex(spec.grey.anchor1000) ? 'anchor' : 'chosen';
+    if (i === 1) return '−step';
+    if (i === 7) return 'solved';
+    if (i === 8) return 'even';
+    return 'cadence';
+}
+
 /**
- * Back to the shipped palette, and it asks first.
+ * The lightness ladder, drawn.
  *
- * In the full lab this button discarded two bodies of work — the palette AND a migration plan
- * across 64 components — so its confirmation named them separately. There is one here, so the
- * wording is one clause. The count is deliberately the number of PALETTES, not of edits: forty
- * slider moves are one authored palette, and "Discard 40 edits?" read as a threat to forty
- * things.
+ * One axis for both scales, spanning every rung either has, with a little air at each end. A
+ * rung is a mark at `pct(L)`; a chromatic mark is filled with the NEUTRAL of its own lightness
+ * (`oklch(L 0 0)`), because the shared ladder is a lightness and not a colour — the hue is what
+ * each family adds afterwards. A grey mark is filled with the grey itself, which is the same
+ * statement made the other way.
+ *
+ * Above the chromatic rail, a dot per anchor at the anchor's own lightness, joined by a hairline
+ * to the rung it feeds: the two brand dots straddle the 500 they average to, and the purple dot
+ * sits exactly on 700. That picture IS constraints C1 and C2.
+ */
+function LadderFigure({ spec, solution }: { spec: PaletteSpec; solution: PaletteSolution }) {
+    const { chromaticRungs, chromaticLadder, greyLadder, derived: d } = solution;
+
+    const all = [...chromaticLadder, ...greyLadder];
+    const hi = Math.max(...all) + 0.02;
+    const lo = Math.min(...all) - 0.02;
+    const pct = (L: number) => ((hi - L) / (hi - lo)) * 100;
+
+    /* Every chromatic anchor, with the ladder lightness it feeds — or none, for one that only
+       pins its own shade. The link is drawn from the dot to the fed rung. */
+    const anchors = spec.chromatic.families.flatMap((f) =>
+        Object.entries(f.anchors).map(([rung, hex]) => {
+            const ref = rungRef(f.id, Number(rung));
+            const c = spec.chromatic;
+            const feeds =
+                isRungRef(c.rung700From) && c.rung700From === ref
+                    ? d.L700
+                    : c.rung500From.some((s) => isRungRef(s) && s === ref)
+                      ? d.L500
+                      : null;
+            return {
+                label: `${f.label} ${rung}`,
+                hex: hex as string,
+                L: hexToOklch(hex as string).L,
+                feeds,
+            };
+        }),
+    );
+
+    const greyRungs = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000];
+    const greyHex = (rung: number) => solution.rungs.get(rungRef('grey', rung))?.hex ?? '#888';
+
+    return (
+        <div className="ladder">
+            <div className="ladder-row">
+                <div className="ladder-label text-xs">
+                    shared ladder
+                    <small className="text-muted-foreground">
+                        {spec.chromatic.families.length} hues
+                    </small>
+                </div>
+                <div className="ladder-track">
+                    {anchors.map((a) => (
+                        <span key={a.label}>
+                            {a.feeds !== null && (
+                                <span
+                                    className="ladder-link"
+                                    style={{
+                                        left: `${Math.min(pct(a.L), pct(a.feeds))}%`,
+                                        width: `${Math.abs(pct(a.L) - pct(a.feeds))}%`,
+                                    }}
+                                />
+                            )}
+                            <span
+                                className="ladder-dot"
+                                style={{ left: `${pct(a.L)}%`, background: a.hex }}
+                                title={`${a.label} ${a.hex} — L ${a.L.toFixed(4)}${a.feeds !== null ? `, feeds rung ${a.feeds === d.L700 ? 700 : 500}` : ''}`}
+                            />
+                        </span>
+                    ))}
+                    <span className="ladder-rail" />
+                    {chromaticRungs.map((rung, i) => {
+                        const L = chromaticLadder[i];
+                        return (
+                            <div
+                                key={rung}
+                                className="ladder-mark"
+                                style={{ left: `${pct(L)}%` }}
+                                title={`rung ${rung} — L ${L.toFixed(4)} · ${chromaticTag(i, spec)}`}
+                            >
+                                <span className="ladder-num">{rung}</span>
+                                <span
+                                    className="ladder-bar"
+                                    style={{ background: `oklch(${L} 0 0)` }}
+                                />
+                                <span className="ladder-val">{L.toFixed(3)}</span>
+                                <span className="ladder-tag">{chromaticTag(i, spec)}</span>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
+            <div className="ladder-row">
+                <div className="ladder-label text-xs">
+                    grey
+                    <small className="text-muted-foreground">its own scale</small>
+                </div>
+                <div className="ladder-track">
+                    <span className="ladder-rail" />
+                    {greyRungs.map((rung, i) => {
+                        const L = greyLadder[i];
+                        return (
+                            <div
+                                key={rung}
+                                className="ladder-mark"
+                                style={{ left: `${pct(L)}%` }}
+                                title={`grey ${rung} — L ${L.toFixed(4)} · ${greyTag(i, spec)}`}
+                            >
+                                <span className="ladder-num">{rung}</span>
+                                <span
+                                    className="ladder-bar"
+                                    style={{ background: greyHex(rung) }}
+                                />
+                                <span className="ladder-val">{L.toFixed(3)}</span>
+                                <span className="ladder-tag">{greyTag(i, spec)}</span>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
+            <p className="ladder-legend text-xs">
+                <b>anchor</b> a hex somebody decided · <b>chosen</b> the lightness an unhooked
+                anchor left behind · <b>mean</b> midway between the two brand anchors, which is why
+                neither sits on the ladder · <b>solved</b> the lightest value that keeps 700 on 200
+                at {spec.chromatic.contrast700on200} — {d.rung200Witness} binds it · <b>÷2 ÷3</b>{' '}
+                even steps across the interval · <b>±step</b> a chosen step of{' '}
+                {spec.chromatic.step100} · <b>cadence</b> five steps tuned so the two breaks in
+                grey's rhythm match · <b>even</b> halfway to the dark end.
+            </p>
+        </div>
+    );
+}
+
+// ------------------------------------------------------------------ the anchors ---
+
+/**
+ * One anchor: a swatch you can open, the hex you can type, what it does, what moving it costs,
+ * and the way to let it go.
+ */
+function AnchorCard({
+    label,
+    hex,
+    role,
+    moves,
+    onChange,
+    onUnhook,
+}: {
+    label: string;
+    hex: string;
+    role: string;
+    /**
+     * Shades whose hex changes when this anchor's lightness moves by 0.01, from
+     * `engine/reach.ts`. `null` when the nudge cannot solve in either direction — near a binding
+     * constraint that is a real answer, so it is said rather than shown as zero.
+     */
+    moves?: number | null;
+    onChange: (hex: string) => void;
+    onUnhook: () => void;
+}) {
+    /*
+       `dragging` has exactly one writer here, the colour picker. A text field commits once, on
+       blur or Enter; a native `input[type=color]` fires `change` on every step as you drag inside
+       its picker, so it needs the flag. `focus`/`blur` is the signal: the input keeps focus while
+       its picker is open.
+    */
+    const setDragging = useStore((s) => s.setDragging);
+    // Re-seeds when the spec changes from elsewhere — a reset, or a shared link — while staying
+    // editable in between.
+    const [draft, setDraft] = useResetOn(hex, hex);
+    const [error, setError] = useState<string | null>(null);
+
+    // Anchors are stored as hex, never as OKLCh: the conversion is not injective at 8 bits.
+    // #F9F9FA read as L/C/H and written back lands on #F8F9FA. Commit takes the value as an
+    // argument rather than reading `draft` from the closure — a stale-closure bug otherwise.
+    const commit = (value: string) => {
+        try {
+            const next = normaliseHex(value);
+            setError(null);
+            onChange(next);
+        } catch {
+            setError('Not a hex colour');
+        }
+    };
+
+    const o = (() => {
+        try {
+            return hexToOklch(hex);
+        } catch {
+            return null;
+        }
+    })();
+
+    return (
+        <article className="anchor-card">
+            <div className="anchor-card-head">
+                {/* The colour picker IS the swatch: `appearance-none` plus a fixed box turns the
+                    native control into a plain square. */}
+                <input
+                    type="color"
+                    value={hex}
+                    aria-label={`${label} colour picker`}
+                    title={`${label} — ${hex}`}
+                    className="anchor-card-swatch border-input shrink-0 cursor-pointer appearance-none rounded-md border bg-transparent p-0 [&::-moz-color-swatch]:rounded-[5px] [&::-moz-color-swatch]:border-0 [&::-webkit-color-swatch]:rounded-[5px] [&::-webkit-color-swatch]:border-0 [&::-webkit-color-swatch-wrapper]:p-0"
+                    onFocus={() => setDragging(true)}
+                    onBlur={() => setDragging(false)}
+                    onChange={(e) => {
+                        setDraft(e.target.value);
+                        commit(e.target.value);
+                    }}
+                />
+                <div className="anchor-card-id">
+                    <span className="anchor-card-name text-sm font-semibold">{label}</span>
+                    <Input
+                        type="text"
+                        value={draft}
+                        spellCheck={false}
+                        aria-label={`${label} hex`}
+                        className="h-7 w-28 font-mono !text-xs"
+                        onChange={(e) => setDraft(e.target.value)}
+                        onBlur={(e) => commit(e.currentTarget.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && commit(e.currentTarget.value)}
+                    />
+                </div>
+            </div>
+            {error && <Chip tone="bad">{error}</Chip>}
+            <p className="anchor-card-role text-muted-foreground text-xs">{role}</p>
+            {o && (
+                <p className="anchor-card-lch text-muted-foreground font-mono text-xs tabular-nums">
+                    L {o.L.toFixed(4)} · C {o.C.toFixed(3)} · h {o.H.toFixed(1)}°
+                </p>
+            )}
+            <div className="anchor-card-foot text-xs">
+                {/* The number that makes the card actionable: what you will see move. */}
+                {moves !== undefined && (
+                    <span
+                        className="text-muted-foreground tabular-nums"
+                        title={
+                            moves === null
+                                ? 'A 0.01 nudge does not solve in either direction from here — this anchor sits against a constraint'
+                                : `Nudging this anchor by 0.01 in lightness changes the hex of ${moves} shades`
+                        }
+                    >
+                        {moves === null ? (
+                            <span className="text-foreground">at a constraint edge</span>
+                        ) : (
+                            <>
+                                moves <span className="text-foreground font-medium">{moves}</span>{' '}
+                                shades
+                            </>
+                        )}
+                    </span>
+                )}
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground hover:text-foreground h-7 px-2 text-xs"
+                    onClick={onUnhook}
+                    title={`Unhook ${label}: its shade derives from the ladder, and what it fed the ladder is kept as a number`}
+                >
+                    Unhook
+                </Button>
+            </div>
+        </article>
+    );
+}
+
+/**
+ * A grey end after unhooking: the two numbers the ramps still read, with nothing to edit.
+ * Read-only on purpose — there is no re-hook, so there is no control to offer.
+ */
+function UnhookedCard({
+    label,
+    role,
+    end,
+}: {
+    label: string;
+    role: string;
+    end: { L: number; C: number };
+}) {
+    return (
+        <article className="anchor-card unhooked">
+            <div className="anchor-card-head">
+                <span className="anchor-card-swatch border-input rounded-md border border-dashed" />
+                <div className="anchor-card-id">
+                    <span className="anchor-card-name text-sm font-semibold">{label}</span>
+                    <span className="text-muted-foreground text-xs">unhooked</span>
+                </div>
+            </div>
+            <p className="anchor-card-role text-muted-foreground text-xs">{role}</p>
+            <p className="anchor-card-lch text-muted-foreground font-mono text-xs tabular-nums">
+                L {end.L.toFixed(4)} · C {end.C.toFixed(3)}
+            </p>
+        </article>
+    );
+}
+
+// ------------------------------------------------------------------- the reset ----
+
+/**
+ * Back to the shipped palette, and it asks first. The count is deliberately the number of
+ * PALETTES, not of edits: forty slider moves are one authored palette.
  */
 function ResetEverything() {
     const resetPalette = useStore((s) => s.resetPalette);
@@ -345,198 +641,5 @@ function ResetEverything() {
                 Keep
             </Button>
         </span>
-    );
-}
-
-/**
- * `purple.700` → "the purple.700 anchor's lightness"; `chosen L 0.5197` → "a chosen lightness
- * (its anchor was unhooked)". The engine names the source; this only phrases it.
- */
-function sourceSentence(source: string): string {
-    return source.startsWith('chosen L ')
-        ? 'a chosen lightness (its anchor was unhooked)'
-        : `the ${source} anchor’s lightness`;
-}
-
-/**
- * A grey end after unhooking: the two numbers the ramps still read, with nothing to edit.
- *
- * Read-only on purpose. There is no re-hook, so there is no control to offer — and an input
- * here would be exactly the "disabled control invites you to try it" the inspector's own header
- * comment warns about.
- */
-function UnhookedEnd({ label, end }: { label: string; end: { L: number; C: number } }) {
-    return (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="border-input size-7 shrink-0 rounded-md border border-dashed" />
-            <span className="w-32 shrink-0 text-xs">{label}</span>
-            <span className="text-muted-foreground shrink-0 text-xs">unhooked</span>
-            <span className="text-muted-foreground shrink-0 font-mono text-xs tabular-nums">
-                L {end.L.toFixed(4)} · C {end.C.toFixed(3)}
-            </span>
-        </div>
-    );
-}
-
-/**
- * One anchor: a swatch you can open, the hex you can type, what it reads in OKLCH, how much
- * of the palette a nudge to it moves, and the way to let it go.
- *
- * ## What was wrong with the row before
- *
- * `.field > label` is `justify-content: space-between`, and this row filled the card — so the
- * OKLCH read-out was flung to the far right edge, roughly 1800px from the field it describes,
- * across nothing. Measured on screen: the input ended at 215px and `L 0.6440 · C 0.193 · h
- * 253.5°` started at 1670px.
- *
- * There were also TWO swatches per row showing the same colour — a 22px rounded `.dot` and a
- * 34px rectangular `input[type=color]`, in different shapes, one inert and one operable. The
- * native input is the one that does something, so it is the only one now, sized to read as a
- * swatch rather than as a browser widget.
- *
- * The row is constrained instead of centred or stretched: everything sits in one line at its
- * natural width, so the eye travels from the colour to its value to what moving it costs.
- */
-function AnchorField({
-    label,
-    hex,
-    moves,
-    onChange,
-    onUnhook,
-}: {
-    label: string;
-    hex: string;
-    /**
-     * Shades whose hex changes when this anchor's lightness moves by 0.01, from
-     * `engine/reach.ts`. `null` when the nudge cannot solve in either direction — near a
-     * binding constraint that is a real answer, so it is said rather than shown as zero.
-     */
-    moves?: number | null;
-    onChange: (hex: string) => void;
-    /** Let the anchor go — see `anchors.ts`. The row's primary path, editing, is untouched. */
-    onUnhook?: () => void;
-}) {
-    /*
-       `dragging` now has exactly one writer, and it is the colour picker below.
-
-       It used to be set by eleven sliders. Those are gone, which left the flag with no
-       writer at all while `SnapshotFrame` still read it — and what it gates is not cheap:
-       the effect that folds the palette's inline custom properties into a real stylesheet,
-       an `emitTokenCss` over the whole graph plus a `replaceSync`, deferred until a
-       continuous edit releases.
-
-       A text field commits once, on blur or Enter, so it does not need the flag. A native
-       `input[type=color]` fires `change` on every step as you drag inside its picker, so it
-       does. `focus`/`blur` is the signal: the input keeps focus while its picker is open.
-       That is a proxy rather than a drag event — and if a platform does not hold focus
-       there, the fallback is no deferral, which is exactly what deleting the flag would
-       have given. Strictly no worse, and better where focus behaves.
-    */
-    const setDragging = useStore((s) => s.setDragging);
-    // Re-seeds when the spec changes from elsewhere — a reset, or a shared link
-    // being loaded — while staying editable in between.
-    const [draft, setDraft] = useResetOn(hex, hex);
-    const [error, setError] = useState<string | null>(null);
-
-    // Anchors are stored as hex, never as OKLCh: the conversion is not injective
-    // at 8 bits. #F9F9FA read as L/C/H and written back lands on #F8F9FA.
-    //
-    // Commit takes the value as an argument rather than reading `draft` from the
-    // closure. Reading state here is a stale-closure bug: an input event and a
-    // blur in the same tick see the pre-update `draft` and silently discard the
-    // edit.
-    const commit = (value: string) => {
-        try {
-            const next = normaliseHex(value);
-            setError(null);
-            onChange(next);
-        } catch {
-            setError('Not a hex colour');
-        }
-    };
-
-    const o = (() => {
-        try {
-            return hexToOklch(hex);
-        } catch {
-            return null;
-        }
-    })();
-
-    return (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            {/*
-               The colour picker IS the swatch. `appearance-none` plus a fixed box turns the
-               native control into a plain square — without it browsers draw their own inset
-               border and padding, which is what made the old row need a second, tidier swatch
-               beside it.
-            */}
-            <input
-                type="color"
-                value={hex}
-                aria-label={`${label} colour picker`}
-                title={`${label} — ${hex}`}
-                className="border-input size-7 shrink-0 cursor-pointer appearance-none rounded-md border bg-transparent p-0 [&::-moz-color-swatch]:rounded-[3px] [&::-moz-color-swatch]:border-0 [&::-webkit-color-swatch]:rounded-[3px] [&::-webkit-color-swatch]:border-0 [&::-webkit-color-swatch-wrapper]:p-0"
-                onFocus={() => setDragging(true)}
-                onBlur={() => setDragging(false)}
-                onChange={(e) => {
-                    setDraft(e.target.value);
-                    commit(e.target.value);
-                }}
-            />
-            <span className="w-32 shrink-0 text-xs">{label}</span>
-            <Input
-                type="text"
-                value={draft}
-                spellCheck={false}
-                aria-label={`${label} hex`}
-                className="w-28 shrink-0 font-mono !text-xs"
-                onChange={(e) => setDraft(e.target.value)}
-                onBlur={(e) => commit(e.currentTarget.value)}
-                onKeyDown={(e) => e.key === 'Enter' && commit(e.currentTarget.value)}
-            />
-            {/* Next to the value, not at the far edge of the card. */}
-            {o && (
-                <span className="text-muted-foreground shrink-0 font-mono text-xs tabular-nums">
-                    L {o.L.toFixed(4)} · C {o.C.toFixed(3)} · h {o.H.toFixed(1)}°
-                </span>
-            )}
-            {/*
-               The number that makes the row actionable, and the one the panel's prose used to
-               carry for only three of the five anchors without saying which was which.
-            */}
-            {moves !== undefined && (
-                <span
-                    className="text-muted-foreground shrink-0 text-xs tabular-nums"
-                    title={
-                        moves === null
-                            ? 'A 0.01 nudge does not solve in either direction from here — this anchor sits against a constraint'
-                            : `Nudging this anchor by 0.01 in lightness changes the hex of ${moves} shades`
-                    }
-                >
-                    {moves === null ? (
-                        <span className="text-foreground">at a constraint edge</span>
-                    ) : (
-                        <>
-                            moves <span className="text-foreground">{moves}</span>
-                        </>
-                    )}
-                </span>
-            )}
-            {error && <Chip tone="bad">{error}</Chip>}
-            {/* Last in the row, after the cost of moving it: the cost of removing it is stated
-                on the shade's own inspector, where there is room for the sentence. */}
-            {onUnhook && (
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-muted-foreground hover:text-foreground h-7 px-2 text-xs"
-                    onClick={onUnhook}
-                    title={`Unhook ${label}: its shade derives from the ladder, and what it fed the ladder is kept as a number`}
-                >
-                    Unhook
-                </Button>
-            )}
-        </div>
     );
 }
