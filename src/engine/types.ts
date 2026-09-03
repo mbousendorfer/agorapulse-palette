@@ -7,6 +7,8 @@
  * else — that is what `npm run verify` proves.
  */
 
+import type { Scope } from './scope';
+
 export const CHROMATIC_RUNGS = [100, 200, 300, 400, 500, 600, 700, 800] as const;
 export const GREY_RUNGS = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000] as const;
 
@@ -23,6 +25,34 @@ export function rungRef(family: FamilyId, rung: number): RungRef {
     return `${family}.${rung}`;
 }
 
+/**
+ * What the shared ladder reads a lightness from: an anchor, or a number.
+ *
+ * The number form is what an UNHOOKED anchor leaves behind. Unhooking `purple.700` turns
+ * "rung 700 is the lightness of #6554C0" into "rung 700 is L 0.5197" — the same float the
+ * solver was already reading, now written down as a chosen value rather than read off a hex.
+ * That is what lets the anchor go without the ladder moving under every other family.
+ */
+export type LadderSource = RungRef | { L: number };
+
+export function isRungRef(source: LadderSource): source is RungRef {
+    return typeof source === 'string';
+}
+
+/**
+ * One end of the grey scale: a pinned hex, or the lightness and chroma it was pinned at.
+ *
+ * Both L and C, because grey's chroma is a ramp between its two ends' own chroma — freezing
+ * L alone would leave the ramp with nothing to read. Hue is not frozen: at C 0.001 the
+ * measured hue of a light grey is 8-bit noise, and the ramp's `hue200`/`hue1000` already
+ * carry the intended one.
+ */
+export type GreyEnd = string | { L: number; C: number };
+
+export function isGreyHex(end: GreyEnd): end is string {
+    return typeof end === 'string';
+}
+
 export interface FamilySpec {
     id: FamilyId;
     /** Display name for the UI. */
@@ -33,7 +63,9 @@ export interface FamilySpec {
      * Fraction of the sRGB gamut boundary the dark end (500-800) sits at.
      * `null` means "use the global factor". Purple is the only family that
      * overrides it, and its value is DERIVED from the #6554c0 anchor rather
-     * than chosen — see `deriveChromaFactor`.
+     * than chosen — see `deriveChromaFactor`. Until that anchor is unhooked:
+     * then the derived value is written here, so the family keeps the chroma
+     * the anchor gave it after the anchor itself is gone.
      */
     chromaFactor: number | null;
     /**
@@ -46,6 +78,11 @@ export interface FamilySpec {
      * fixed literal union.
      */
     anchors: Partial<Record<number, string>>;
+    /**
+     * What the colour is for: brand design, product design, or both. A declaration the
+     * solver never reads — see `scope.ts`. Absent means nothing has been declared.
+     */
+    scope?: Scope[];
     /**
      * Rungs this family materialises past 800, at the ladder's own low step.
      *
@@ -62,12 +99,16 @@ export interface FamilySpec {
 export interface ChromaticSpec {
     families: FamilySpec[];
     /**
-     * Which anchors define the 500 rung. Its L is their mean, so both sit
-     * OFF the shared ladder — by -0.0271 and +0.0272 respectively.
+     * What defines the 500 rung. Its L is the mean of the two, so both brand
+     * anchors sit OFF the shared ladder — by -0.0271 and +0.0272 respectively.
+     * Either entry may be a frozen lightness once its anchor is unhooked.
      */
-    rung500From: [RungRef, RungRef];
-    /** The anchor that fixes rung 700, and with it the whole low plateau. */
-    rung700From: RungRef;
+    rung500From: [LadderSource, LadderSource];
+    /**
+     * What fixes rung 700, and with it the whole low plateau: the purple anchor
+     * as shipped, or the lightness it left behind when unhooked.
+     */
+    rung700From: LadderSource;
     /**
      * Free parameter: the 100->200 step. Its stated objective (match
      * grey-100's contrast on white) leaves a residual of ~+0.014 — it is a
@@ -102,10 +143,10 @@ export interface ChromaticSpec {
 }
 
 export interface GreySpec {
-    /** Lightest rung, pinned. */
-    anchor100: string;
-    /** Darkest rung, pinned. */
-    anchor1000: string;
+    /** Lightest rung: a pinned hex, or the L and C it was pinned at once unhooked. */
+    anchor100: GreyEnd;
+    /** Darkest rung, likewise. */
+    anchor1000: GreyEnd;
     /** Free parameter: the 100->200 step. */
     step100: number;
     /** Minimum contrast of rung 800 on rung 200. Binding at 4.501 today. */
@@ -114,6 +155,8 @@ export interface GreySpec {
     /** Hue is linear in L between these two, from rung 200 to rung 1000. */
     hue200: number;
     hue1000: number;
+    /** Same declaration as `FamilySpec.scope`; grey is a colour too. */
+    scope?: Scope[];
 }
 
 export interface OverrideSpec {
@@ -200,6 +243,13 @@ export interface PaletteSolution {
         greyTailStep: number;
         /** purple's gamut fraction, back-solved from its anchor. */
         purpleChromaFactor: number;
+        /**
+         * Where the two seated rungs read their lightness from, as words: `purple.700`, or
+         * `chosen L 0.5197` once that anchor is unhooked. Produced HERE so the engine panel,
+         * the markdown export and the fidelity report print one sentence rather than each
+         * hard-coding "the purple anchor" and going stale the moment it is gone.
+         */
+        ladderSources: { L700: string; L500: [string, string] };
     };
 }
 

@@ -79,8 +79,10 @@ const d = solution.derived;
 if (!quiet) {
     console.log('\n\x1b[1mDerivation chain\x1b[0m');
     console.log('─'.repeat(72));
-    console.log(`  1. L700  ← purple anchor #6554C0        ${d.L700.toFixed(4)}`);
-    console.log(`  2. L500  ← mean(#178DFE, #FF6726)       ${d.L500.toFixed(4)}`);
+    console.log(`  1. L700  ← ${d.ladderSources.L700.padEnd(29)}  ${d.L700.toFixed(4)}`);
+    console.log(
+        `  2. L500  ← mean(${d.ladderSources.L500.join(', ')})`.padEnd(42) + `${d.L500.toFixed(4)}`,
+    );
     console.log(`  3. low plateau step = (L500−L700)/2     ${d.lowStep.toFixed(4)}`);
     console.log(
         `  4. L200  ← SOLVED, contrast(700,200)≥4.5 ${d.L200.toFixed(4)}   binding family: \x1b[33m${d.rung200Witness}\x1b[0m`,

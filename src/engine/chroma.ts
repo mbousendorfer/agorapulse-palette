@@ -18,6 +18,7 @@
  */
 
 import { cmaxFor } from '../color/cmax';
+import { hexToOklch } from '../color/oklab';
 import type { ChromaLimit, ChromaticSpec, FamilySpec } from './types';
 
 export interface ChromaResult {
@@ -40,6 +41,27 @@ export function deriveChromaFactor(anchorL: number, anchorC: number, hue: number
     const cmax = cmaxFor(anchorL, hue);
     if (cmax <= 0) return 0;
     return anchorC / cmax;
+}
+
+/**
+ * The gamut fraction a family actually solves with, or `null` for "the global one".
+ *
+ * Three cases, in order: a factor written in the spec wins; otherwise the family's first dark
+ * anchor (500-800) back-solves one, adopted only when it sits clearly INSIDE the boundary —
+ * the two brand 500s are essentially at it, and rounding them to 0.977 rather than 0.98 would
+ * shift every other rung of those families; otherwise `null`.
+ *
+ * One function rather than the same three branches in `solvePalette` and again in the unhook
+ * path: unhooking an anchor has to know what factor the family was USING so it can write that
+ * number down, and a second copy of this rule is how the two would drift.
+ */
+export function effectiveChromaFactor(family: FamilySpec, spec: ChromaticSpec): number | null {
+    if (family.chromaFactor !== null) return family.chromaFactor;
+    const darkAnchorRung = [500, 600, 700, 800].find((r) => family.anchors[r]);
+    if (darkAnchorRung === undefined) return null;
+    const { L, C } = hexToOklch(family.anchors[darkAnchorRung] as string);
+    const derived = deriveChromaFactor(L, C, family.hue);
+    return derived < spec.chromaFactor - 0.02 ? derived : null;
 }
 
 /** Chroma for a dark-end rung (500-800). */

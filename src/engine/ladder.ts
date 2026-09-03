@@ -7,8 +7,10 @@
  *      that drives the whole scale. #6554c0 fell 70% of the way between the
  *      old 600 and 700, so no invisible approximation was available; the
  *      decision was to re-seat the ladder so that rung 700 IS its lightness.
+ *      Once that anchor is unhooked the spec carries the lightness itself.
  *   2. L500 <- the mean of the two brand anchors' lightness. Both anchors
- *      therefore sit OFF this ladder, by -0.0271 and +0.0272.
+ *      therefore sit OFF this ladder, by -0.0271 and +0.0272. Either may
+ *      likewise have been replaced by the number it was contributing.
  *   3. lowStep <- (L500 - L700) / divisor. Gives 600 and 800.
  *   4. L200 is SOLVED, not chosen: the smallest L that holds
  *      contrast(700, 200) >= target across every family. Green binds it,
@@ -26,7 +28,7 @@
 import { oklchToHex, contrastHex, hexToOklch } from '../color/oklab';
 import { bisect } from './bisect';
 import { darkEndChroma, lightEndChroma } from './chroma';
-import type { ChromaticSpec, FamilySpec } from './types';
+import { isRungRef, type ChromaticSpec, type FamilySpec, type LadderSource } from './types';
 
 export interface LadderResult {
     /** Rung names, e.g. [100..800], extended at the dark end on request. */
@@ -76,9 +78,11 @@ export function contrast700on200(
 }
 
 export function solveLadder(spec: ChromaticSpec, anchorL: (ref: string) => number): LadderResult {
-    const L700 = anchorL(spec.rung700From);
+    // An anchor is looked up; a frozen lightness is simply read.
+    const sourceL = (s: LadderSource) => (isRungRef(s) ? anchorL(s) : s.L);
+    const L700 = sourceL(spec.rung700From);
     const [refA, refB] = spec.rung500From;
-    const L500 = (anchorL(refA) + anchorL(refB)) / 2;
+    const L500 = (sourceL(refA) + sourceL(refB)) / 2;
 
     const lowStep = (L500 - L700) / spec.lowPlateauDivisor;
     const L600 = L700 + lowStep;

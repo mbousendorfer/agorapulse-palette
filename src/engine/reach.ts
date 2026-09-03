@@ -37,12 +37,25 @@
  * `solvePalette`, not in a structure beside it. Perturbing the input and diffing the output is
  * the only way to get this number that cannot drift from what the solver really does.
  *
- * Five anchors, two solves each at ~3.3 ms. Memoise on the spec.
+ * Two solves per anchor at ~3.3 ms — ten for the shipped five, fewer once some are unhooked.
+ * Memoise on the spec.
  */
 
 import { hexToOklch, oklchToHex } from '../color/oklab';
 import { solvePalette } from './solve';
-import type { PaletteSpec } from './types';
+import { isGreyHex, type PaletteSolution, type PaletteSpec } from './types';
+
+/**
+ * Shades whose hex differs between two solutions — the unit every "how much moves" figure in
+ * this app is stated in. Shared with the unhook preview so both count the same way.
+ */
+export function countChangedHexes(a: PaletteSolution, b: PaletteSolution): number {
+    let n = 0;
+    for (const [ref, r] of a.rungs) {
+        if (b.rungs.get(ref)?.hex !== r.hex) n++;
+    }
+    return n;
+}
 
 /** OKLab lightness. About a third of the chromatic ladder's own step. */
 const NUDGE = 0.01;
@@ -55,24 +68,23 @@ const NUDGE = 0.01;
  */
 export type AnchorReach = Map<string, number | null>;
 
-/** Every key `anchorReach` returns, without solving anything. */
+/** Every key `anchorReach` returns, without solving anything. A grey end counts while it is a hex. */
 export function anchorKeys(spec: PaletteSpec): string[] {
     return [
         ...spec.chromatic.families.flatMap((f) =>
             Object.keys(f.anchors).map((rung) => `${f.id}.${rung}`),
         ),
-        'grey.100',
-        'grey.1000',
+        ...(isGreyHex(spec.grey.anchor100) ? ['grey.100'] : []),
+        ...(isGreyHex(spec.grey.anchor1000) ? ['grey.1000'] : []),
     ];
 }
 
 export function anchorReach(spec: PaletteSpec): AnchorReach {
     const out: AnchorReach = new Map();
 
-    let baseline: Map<string, string>;
+    let baseline: PaletteSolution;
     try {
-        const solved = solvePalette(spec);
-        baseline = new Map([...solved.rungs].map(([ref, r]) => [ref, r.hex]));
+        baseline = solvePalette(spec);
     } catch {
         // No baseline to diff against, so every answer is unknown rather than zero.
         for (const key of anchorKeys(spec)) out.set(key, null);
@@ -93,12 +105,7 @@ export function anchorReach(spec: PaletteSpec): AnchorReach {
                 const draft = structuredClone(spec);
                 mutate(draft, delta);
                 try {
-                    const next = solvePalette(draft);
-                    let n = 0;
-                    for (const [ref, hex] of baseline) {
-                        if (next.rungs.get(ref)?.hex !== hex) n++;
-                    }
-                    return n;
+                    return countChangedHexes(baseline, solvePalette(draft));
                 } catch {
                     return null;
                 }
@@ -120,18 +127,17 @@ export function anchorReach(spec: PaletteSpec): AnchorReach {
         }
     }
 
-    out.set(
-        'grey.100',
-        changedBy((draft, delta) => {
-            draft.grey.anchor100 = shiftLightness(draft.grey.anchor100, delta);
-        }),
-    );
-    out.set(
-        'grey.1000',
-        changedBy((draft, delta) => {
-            draft.grey.anchor1000 = shiftLightness(draft.grey.anchor1000, delta);
-        }),
-    );
+    // An unhooked grey end is a number, not an anchor: nothing to nudge, no row to print.
+    for (const key of ['anchor100', 'anchor1000'] as const) {
+        const end = spec.grey[key];
+        if (!isGreyHex(end)) continue;
+        out.set(
+            key === 'anchor100' ? 'grey.100' : 'grey.1000',
+            changedBy((draft, delta) => {
+                draft.grey[key] = shiftLightness(end, delta);
+            }),
+        );
+    }
 
     return out;
 }

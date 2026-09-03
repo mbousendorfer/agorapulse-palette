@@ -9,8 +9,9 @@
  * Formatting is what makes that PR reviewable, so it is not polish.
  */
 
-import { contrastHex } from '../color/oklab';
+import { contrastHex, hexToOklch } from '../color/oklab';
 import { evaluateConstraints } from '../engine/constraints';
+import { familyScopes, isScopeList, scopeSentence } from '../engine/scope';
 import { GREY_RUNGS, type PaletteSolution, type PaletteSpec } from '../engine/types';
 import { emitTokenCss } from '../emit/cssVars';
 import type { Resolved } from '../model/resolve';
@@ -190,13 +191,16 @@ export function exportCss(
 
 // -------------------------------------------------------------- markdown -----
 
-export function exportMarkdown(solution: PaletteSolution): string {
+export function exportMarkdown(solution: PaletteSolution, spec?: PaletteSpec): string {
     const lines: string[] = ['# Agorapulse V3 palette', ''];
     const d = solution.derived;
 
     lines.push('## Derivation', '');
-    lines.push(`- rung 700 ← purple anchor, L ${d.L700.toFixed(4)}`);
-    lines.push(`- rung 500 ← mean of the two brand anchors, L ${d.L500.toFixed(4)}`);
+    // From the solution, not prose: after an anchor is unhooked these read "chosen L 0.5197".
+    lines.push(`- rung 700 ← ${d.ladderSources.L700}, L ${d.L700.toFixed(4)}`);
+    lines.push(
+        `- rung 500 ← mean of ${d.ladderSources.L500[0]} and ${d.ladderSources.L500[1]}, L ${d.L500.toFixed(4)}`,
+    );
     lines.push(
         `- low plateau step ${d.lowStep.toFixed(4)}, high plateau step ${d.highStep.toFixed(4)}`,
     );
@@ -229,6 +233,21 @@ export function exportMarkdown(solution: PaletteSolution): string {
             ' |',
         '',
     );
+
+    /*
+       Declared scopes, only when at least one family declares one: a table of "—" would be a
+       section saying nothing. Grey is listed like any other colour.
+    */
+    if (spec) {
+        const scoped = ['grey', ...familiesOf(solution).filter((f) => f !== 'grey')]
+            .map((family) => [family, scopeSentence(familyScopes(spec, family))] as const)
+            .filter((row): row is readonly [string, string] => row[1] !== null);
+        if (scoped.length) {
+            lines.push('## Scope', '', '| family | for |', '|---|---|');
+            for (const [family, sentence] of scoped) lines.push(`| ${family} | ${sentence} |`);
+            lines.push('');
+        }
+    }
 
     lines.push('## Measurements', '');
     lines.push('| family | rung | hex | L | C | h | on white | provenance |');
@@ -432,8 +451,44 @@ function readSharedPayload(
     if (extra !== undefined && (typeof extra !== 'number' || extra < 0 || extra > 8)) {
         throw new Error(`Shared spec asks for ${JSON.stringify(extra)} extra dark rungs`);
     }
-    if (grey.anchor100 === grey.anchor1000) {
-        throw new Error('Shared spec gives grey the same anchor at both ends');
+    /*
+       Each grey end is a hex or an `{ L, C }` an unhooked anchor left behind, and the two must
+       differ IN LIGHTNESS: `greyChromaAt` divides by L100 − L1000. Comparing the strings, as
+       this used to, let two different hexes of equal lightness through to the same NaN.
+    */
+    const isUnit = (v: unknown): v is number => typeof v === 'number' && v > 0 && v < 1;
+    const greyEndL = (end: unknown, key: string): number => {
+        if (typeof end === 'string') return hexToOklch(end).L;
+        if (isObject(end) && isUnit(end.L) && typeof end.C === 'number' && end.C >= 0) {
+            return end.L;
+        }
+        throw new Error(`Shared spec has an unusable grey ${key}: ${JSON.stringify(end)}`);
+    };
+    if (
+        Math.abs(greyEndL(grey.anchor100, 'anchor100') - greyEndL(grey.anchor1000, 'anchor1000')) <
+        1e-9
+    ) {
+        throw new Error('Shared spec gives grey the same lightness at both ends');
+    }
+    // A scope is a declaration the UI renders as pills; an unknown word would render as a
+    // pill that no control can turn off.
+    for (const family of [grey, ...chromatic.families]) {
+        if (isObject(family) && !isScopeList(family.scope)) {
+            throw new Error(`Shared spec has an unusable scope: ${JSON.stringify(family.scope)}`);
+        }
+    }
+    // A ladder source is an anchor reference or a frozen lightness; a `{ L: 5 }` from a URL
+    // would seat the whole ladder outside [0, 1] with no error at all.
+    const isSource = (s: unknown) => typeof s === 'string' || (isObject(s) && isUnit(s.L));
+    if (!isSource(chromatic.rung700From)) {
+        throw new Error('Shared spec has an unusable rung700From');
+    }
+    if (
+        !Array.isArray(chromatic.rung500From) ||
+        chromatic.rung500From.length !== 2 ||
+        !chromatic.rung500From.every(isSource)
+    ) {
+        throw new Error('Shared spec has an unusable rung500From');
     }
 
     const aliases = Array.isArray(parsed.aliases)

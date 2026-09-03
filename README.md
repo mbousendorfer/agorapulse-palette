@@ -14,6 +14,12 @@ The palette is **solved, not picked.** Five anchor hexes, a handful of parameter
 two declared exceptions produce all 66 shades. `spec/palette.baseline.json` is the
 input; the shades are its outputs.
 
+An anchor can be unhooked. The shade falls back onto the ladder, and the lightness the anchor
+was seeding is written into the spec as a chosen number, so nothing else moves.
+
+A colour can also declare what it is for — brand design, product design, or both. The solver
+never reads it; the wall, the share link and the markdown export carry it.
+
 That claim is a test rather than a comment. `npm run fidelity` solves the spec and
 compares the result to the palette the design system ships, within 1 LSB per channel:
 

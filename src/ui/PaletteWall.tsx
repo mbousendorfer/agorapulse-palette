@@ -19,11 +19,20 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 import { contrastHex, prefersDarkInk } from '../color/oklab';
+import { countAnchors } from '../engine/anchors';
+import { normaliseScopes, scopeSentence, setFamilyScopes } from '../engine/scope';
 import { GREY_RUNGS, rungRef } from '../engine/types';
+import { ScopeControl } from './ScopeControl';
 import { cssVarFromPath } from '../model/cssName';
 // `graph` is used only by GivenColours, which lists vendored literals. The wall
 // itself deliberately does NOT consult it — see rungCssVar below.
-import { BASELINE_SPEC, graph, paletteEditCount, useStore } from '../state/store';
+import {
+    BASELINE_SOLUTION,
+    BASELINE_SPEC,
+    graph,
+    paletteEditCount,
+    useStore,
+} from '../state/store';
 import { encodeSpecToHash, exportFigma } from '../export';
 import { AddFamilyInline } from './AddFamily';
 import { PageHeading } from './PageHelp';
@@ -169,10 +178,9 @@ export function PaletteWall() {
     const chromaticRungs = solution.chromaticRungs;
     const maxColumns = columnCount(chromaticRungs);
 
-    // Anchors across every family, plus grey's two. Counted so the help cannot
-    // claim "five" after a sixth is added.
-    const anchorCount =
-        spec.chromatic.families.reduce((n, f) => n + Object.keys(f.anchors).length, 0) + 2;
+    // Anchors across every family, plus whichever of grey's two are still hexes. Counted so
+    // the help cannot claim "five" after a sixth is added — or after one is unhooked.
+    const anchorCount = countAnchors(spec);
 
     // Families come from the spec, so a family added in the modal appears here
     // without a code change.
@@ -279,6 +287,12 @@ export function PaletteWall() {
                             A <b>notched corner</b> means the chroma is against the edge of sRGB
                             there. Turning the chroma knob will not move that shade — the space has
                             run out, not the rule.
+                        </p>
+                        <p>
+                            A <b>dot</b> in the bottom corner means the shade has been edited in
+                            this session: its hex is not the one the design system ships. Hover it
+                            to see the shipped value. A family added here has no shipped value to
+                            differ from, so it carries none.
                         </p>
                     </>
                 }
@@ -614,6 +628,17 @@ function FamilyRow({
     const updateSpec = useStore((s) => s.updateSpec);
     const selectToken = useStore((s) => s.selectToken);
     const say = useStore((s) => s.say);
+    /*
+       The family's declared scope, selected by REFERENCE — the array on the spec, not a copy —
+       so this row does not re-render on every unrelated store update. Normalised at render.
+    */
+    const scope = useStore((s) =>
+        family === 'grey'
+            ? s.spec.grey.scope
+            : s.spec.chromatic.families.find((f) => f.id === family)?.scope,
+    );
+    const scopes = normaliseScopes(scope) ?? [];
+    const scopeCaption = scopeSentence(scopes);
 
     const remove = () => {
         // Drop its overrides too, or the spec keeps exceptions pinned to rungs
@@ -634,7 +659,13 @@ function FamilyRow({
     return (
         <>
             <div className="wall-family text-muted-foreground text-xs">
-                <div className="wall-family-name">
+                {/* The ladder note moved from a caption line into the title: the row is 72px,
+                    the swatch's height, and the scope control below took the caption's line.
+                    The wall's own help says the same thing once, for every row. */}
+                <div
+                    className="wall-family-name"
+                    title={`${label} — ${family === 'grey' ? 'its own ten-rung scale' : 'on the shared lightness ladder'}${scopeCaption ? ` · ${scopeCaption}` : ''}`}
+                >
                     {label}
                     {removable && (
                         <button
@@ -647,9 +678,19 @@ function FamilyRow({
                         </button>
                     )}
                 </div>
-                <div className="text-muted-foreground text-xs">
-                    {family === 'grey' ? 'independent scale' : 'shared ladder'}
-                </div>
+                {/* What the colour is FOR, declared here where the colour is named. Authored
+                    state like the hue, so it goes through `updateSpec` and is one undo step.
+                    Stacked: two pills side by side measure ~108px and the label column is
+                    104 — a number six comments in `app.css` depend on. */}
+                <ScopeControl
+                    value={scopes}
+                    subject={label}
+                    // Abreast again on a phone, where the header is a row with room beside the
+                    // name. A utility, not an `app.css` rule: that file is `layer(components)`
+                    // and `flex-col` here would beat it. 810px is the wall's own breakpoint.
+                    className="wall-family-scope flex-col items-stretch max-[810px]:flex-row max-[810px]:items-center"
+                    onChange={(next) => updateSpec((d) => setFamilyScopes(d, family, next))}
+                />
             </div>
             {cells.map((rung, i) => (
                 <Swatch
@@ -829,10 +870,21 @@ function Swatch({
     // annotating; as a machined corner it waits to be asked.
     const clamped = p.kind === 'ladder' && p.gamutLimited;
 
+    /*
+       Edited: this shade is not the one the design system ships. Measured in HEX against the
+       baseline solve, not inferred from the spec — a moved anchor edits 49 shades that carry no
+       mark of their own, and a rung whose anchor was nudged back to where it started is not
+       edited at all. A shade with no shipped counterpart (a family added in this session) is
+       new rather than edited, and its row already says so.
+    */
+    const shipped = BASELINE_SOLUTION.rungs.get(ref)?.hex;
+    const edited = shipped !== undefined && shipped !== solved.hex;
+
     const title = [
         `${family}-${rung}  ${solved.hex}`,
         `L ${solved.L.toFixed(4)}  C ${solved.C.toFixed(4)}  h ${solved.H.toFixed(1)}`,
         `on white ${contrastHex(solved.hex, '#FFFFFF').toFixed(2)}`,
+        ...(edited ? [`Edited — the design system ships ${shipped}.`] : []),
         p.kind === 'anchor'
             ? 'Anchor: pinned hex that also feeds the derivation.'
             : p.kind === 'override'
@@ -863,7 +915,7 @@ function Swatch({
               : clamped
                 ? 'derived, chroma clamped by the sRGB gamut'
                 : 'derived from the ladder';
-    const spokenName = `${label} ${rung}, ${solved.hex}, ${spokenState}`;
+    const spokenName = `${label} ${rung}, ${solved.hex}, ${spokenState}${edited ? `, edited from ${shipped}` : ''}`;
 
     return (
         <div className="swatch-cell">
@@ -913,6 +965,10 @@ function Swatch({
                     {rung}
                 </span>
                 {clamped && <span className="swatch-clamp" aria-hidden />}
+                {/* A dot, not a word: the foot already holds a mark and a hex in 36px, and
+                    "edited" is a fact about the session rather than about the colour. The
+                    title and the spoken name carry the words, and the shipped hex. */}
+                {edited && <span className="swatch-edited" aria-hidden />}
                 <span className="swatch-foot" aria-hidden>
                     {mark && <span className="swatch-mark rounded-sm tracking-wide">{mark}</span>}
                     <span className={SWATCH_HEX}>{solved.hex.replace('#', '')}</span>

@@ -48,8 +48,10 @@ import { Chip } from './Chip';
 
 import { contrastHex, hexToOklch, inkOn, normaliseHex } from '../color/oklab';
 import { deriveChromaFactor } from '../engine/chroma';
+import { normaliseScopes, type Scope } from '../engine/scope';
 import { solvePalette } from '../engine/solve';
 import type { PaletteSpec } from '../engine/types';
+import { ScopeControl } from './ScopeControl';
 import { toFamilyId } from '../model/synthetic';
 import { useStore } from '../state/store';
 
@@ -97,6 +99,8 @@ function AddFamilyForm({ onDone }: { onDone: () => void }) {
     const current = useStore((s) => s.solution);
 
     const [name, setName] = useState('');
+    /** Brand, product, or both. Nothing declared until it is — the same default a shipped family has. */
+    const [scope, setScope] = useState<Scope[]>([]);
     /** One colour, edited any way you like. Where the dialog opens: a mid magenta. */
     const [hex, setHex] = useState('#C2185B');
     /* Whether the last channel move asked for a colour sRGB can hold. `ChannelEditor` reports
@@ -213,9 +217,12 @@ function AddFamilyForm({ onDone }: { onDone: () => void }) {
                 hue: effectiveHue,
                 chromaFactor: donates?.chromaFactor ?? null,
                 anchors: {},
+                // Absent rather than `[]` when nothing was declared — see `scope.ts`.
+                ...(normaliseScopes(scope) ? { scope: normaliseScopes(scope) } : {}),
             });
         });
         setName('');
+        setScope([]);
         onDone();
     };
 
@@ -376,6 +383,20 @@ function AddFamilyForm({ onDone }: { onDone: () => void }) {
                         )}
                         {taken && <Chip tone="bad">that family already exists</Chip>}
                     </label>
+                    {/* The same control the wall's row header carries, so the choice made here
+                        is the one you see there. Optional: a colour with no declared scope is
+                        the state every shipped family starts in. */}
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-muted-foreground shrink-0 text-xs">For</span>
+                        <ScopeControl
+                            value={scope}
+                            onChange={setScope}
+                            subject={name.trim() || 'this colour'}
+                        />
+                        <span className="text-muted-foreground text-xs">
+                            brand design, product design, or both — you can change it on the wall
+                        </span>
+                    </div>
                 </div>
             </div>
 

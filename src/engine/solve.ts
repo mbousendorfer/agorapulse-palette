@@ -8,12 +8,14 @@
  */
 
 import { hexToOklch, normaliseHex, oklchToHex } from '../color/oklab';
-import { darkEndChroma, deriveChromaFactor, lightEndChroma } from './chroma';
-import { greyHexAt, solveGrey, type GreyResultAnchors } from './grey';
+import { darkEndChroma, effectiveChromaFactor, lightEndChroma } from './chroma';
+import { greyEnd, greyHexAt, solveGrey, type GreyResultAnchors } from './grey';
 import { solveLadder } from './ladder';
 import {
     GREY_RUNGS,
+    isRungRef,
     rungRef,
+    type LadderSource,
     type PaletteSolution,
     type PaletteSpec,
     type Provenance,
@@ -35,6 +37,8 @@ export function solvePalette(spec: PaletteSpec): PaletteSolution {
         return hex;
     };
     const anchorL = (ref: string) => hexToOklch(anchorHex(ref)).L;
+    // The same source, as a sentence, for every surface that explains the ladder.
+    const describe = (s: LadderSource) => (isRungRef(s) ? s : `chosen L ${s.L.toFixed(4)}`);
 
     const ladder = solveLadder(spec.chromatic, anchorL);
     const grey = solveGrey(spec.grey);
@@ -47,23 +51,8 @@ export function solvePalette(spec: PaletteSpec): PaletteSolution {
     for (const family of spec.chromatic.families) {
         // A family whose anchor sits below the global factor gets its own
         // factor back-solved from that anchor, rather than a magic constant.
-        // Purple is the only family in this position today.
-        let factor = family.chromaFactor;
-        if (factor === null) {
-            const darkAnchorRung = [500, 600, 700, 800].find((r) => family.anchors[r]);
-            if (darkAnchorRung !== undefined) {
-                const hex = family.anchors[darkAnchorRung] as string;
-                const { L, C } = hexToOklch(hex);
-                const derivedFactor = deriveChromaFactor(L, C, family.hue);
-                // Only adopt it when the anchor really is inside the gamut
-                // boundary; the two brand 500s sit essentially at it, and
-                // rounding them to 0.977 rather than 0.98 would shift every
-                // other rung of those families.
-                if (derivedFactor < spec.chromatic.chromaFactor - 0.02) {
-                    factor = derivedFactor;
-                }
-            }
-        }
+        // Purple is the only family in this position today — see `chroma.ts`.
+        const factor = effectiveChromaFactor(family, spec.chromatic);
         const effective = { ...family, chromaFactor: factor };
         if (family.id === 'purple' && factor !== null) purpleFactor = factor;
 
@@ -150,9 +139,11 @@ export function solvePalette(spec: PaletteSpec): PaletteSolution {
         const ladderL = grey.L[i];
         const override = overrides.get(ref);
 
-        // The two grey anchors are pinned by their hex, like chromatic anchors.
-        const pinned =
+        // The two grey ends are pinned by their hex, like chromatic anchors — while
+        // they still ARE hexes. An unhooked end has no hex and re-derives on the ramp.
+        const end =
             rung === 100 ? spec.grey.anchor100 : rung === 1000 ? spec.grey.anchor1000 : undefined;
+        const pinned = end === undefined ? undefined : greyEnd(end).hex;
 
         let hex = greyHexAt(ladderL, greyAnchors, spec.grey);
         // `ramp`, not a ceiling: grey's chroma is interpolated linearly in L between
@@ -196,6 +187,13 @@ export function solvePalette(spec: PaletteSpec): PaletteSolution {
             greyStep3: grey.step3,
             greyTailStep: grey.tailStep,
             purpleChromaFactor: purpleFactor,
+            ladderSources: {
+                L700: describe(spec.chromatic.rung700From),
+                L500: [
+                    describe(spec.chromatic.rung500From[0]),
+                    describe(spec.chromatic.rung500From[1]),
+                ],
+            },
         },
     };
 }

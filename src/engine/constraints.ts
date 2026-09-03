@@ -15,7 +15,34 @@
  */
 
 import { contrastHex, hexToOklch } from '../color/oklab';
-import { getRung, type FamilyId, type PaletteSolution, type PaletteSpec } from './types';
+import {
+    getRung,
+    isRungRef,
+    type FamilyId,
+    type LadderSource,
+    type PaletteSolution,
+    type PaletteSpec,
+} from './types';
+
+/**
+ * The lightness a ladder source stands for: an anchor's, or the number it was frozen to.
+ * `undefined` when a reference points at an anchor the spec no longer has — the solver would
+ * have refused that spec, so it is unreachable here, but a constraint must not invent a zero.
+ */
+function sourceL(spec: PaletteSpec, source: LadderSource): number | undefined {
+    if (!isRungRef(source)) return source.L;
+    const [fam, rung] = source.split('.');
+    const hex = spec.chromatic.families.find((f) => f.id === fam)?.anchors[Number(rung)];
+    return hex ? hexToOklch(hex).L : undefined;
+}
+
+/** `the purple anchor` or `a chosen lightness`, for a label. */
+function sourceName(spec: PaletteSpec, source: LadderSource): string {
+    if (!isRungRef(source)) return 'a chosen lightness';
+    const fam = source.split('.')[0];
+    const label = spec.chromatic.families.find((f) => f.id === fam)?.label ?? fam;
+    return `the ${label} anchor`;
+}
 
 export type ConstraintStatus = 'satisfied' | 'binding' | 'violated' | 'not-applicable';
 
@@ -66,52 +93,65 @@ export function evaluateConstraints(
     const CHROMATIC: FamilyId[] = spec.chromatic.families.map((f) => f.id);
     const out: ConstraintResult[] = [];
 
-    // --- C1: rung 700 is the purple anchor's lightness ---------------------
+    // --- C1: rung 700 is its source's lightness ------------------------------
     {
-        const anchor = spec.chromatic.families.find((f) => f.id === 'purple')?.anchors[700];
-        const target = anchor ? hexToOklch(anchor).L : 0;
+        const source = spec.chromatic.rung700From;
+        const frozen = !isRungRef(source);
+        const target = sourceL(spec, source) ?? NaN;
         const measured = solution.derived.L700;
         const slack = measured - target;
         out.push({
             id: 'C1',
-            label: 'Rung 700 sits at the purple anchor’s lightness',
+            label: frozen
+                ? 'Rung 700 sits at its chosen lightness'
+                : `Rung 700 sits at ${sourceName(spec, source)}’s lightness`,
             explanation:
                 'The scale is seated on #6554C0. It fell 70% of the way between the old 600 and ' +
                 '700, so there was no invisible approximation available — the decision was to ' +
-                'make rung 700 be its lightness. Everything else follows from this.',
+                'make rung 700 be its lightness. Everything else follows from this.' +
+                (frozen
+                    ? ' That anchor has since been unhooked: the lightness it set is now a ' +
+                      'number in the spec, and the ladder stays where it was.'
+                    : ''),
             status: Math.abs(slack) <= L_TOL ? 'satisfied' : 'violated',
             slack,
             unit: 'L',
             measured,
             target,
-            derivedFrom: 'anchor purple.700',
+            derivedFrom: frozen
+                ? 'a chosen lightness (its anchor was unhooked)'
+                : `anchor ${source}`,
         });
     }
 
-    // --- C2: rung 500 is the mean of the two brand anchors -----------------
+    // --- C2: rung 500 is the mean of its two sources ---------------------------
     {
         const [a, b] = spec.chromatic.rung500From;
-        const find = (ref: string) => {
-            const [fam, rung] = ref.split('.');
-            return spec.chromatic.families.find((f) => f.id === fam)?.anchors[Number(rung)];
-        };
-        const ha = find(a);
-        const hb = find(b);
-        const target = ha && hb ? (hexToOklch(ha).L + hexToOklch(hb).L) / 2 : 0;
+        const la = sourceL(spec, a);
+        const lb = sourceL(spec, b);
+        const target = la !== undefined && lb !== undefined ? (la + lb) / 2 : NaN;
         const measured = solution.derived.L500;
+        const anyFrozen = !isRungRef(a) || !isRungRef(b);
+        const describe = (s: LadderSource) =>
+            isRungRef(s) ? `anchor ${s}` : `chosen L ${s.L.toFixed(4)}`;
         out.push({
             id: 'C2',
-            label: 'Rung 500 is the mean of the two brand anchors',
+            label: anyFrozen
+                ? 'Rung 500 is the mean of its two sources'
+                : 'Rung 500 is the mean of the two brand anchors',
             explanation:
                 'Both brand anchors therefore sit OFF the shared ladder — #178DFE by −0.027 and ' +
                 '#FF6726 by +0.027. The five non-anchored families use the mean. This is why ' +
-                '"the ladder is shared" is not true at rung 500.',
+                '"the ladder is shared" is not true at rung 500.' +
+                (anyFrozen
+                    ? ' An unhooked anchor keeps contributing the lightness it had, as a number.'
+                    : ''),
             status: Math.abs(measured - target) <= L_TOL ? 'satisfied' : 'violated',
             slack: measured - target,
             unit: 'L',
             measured,
             target,
-            derivedFrom: 'anchors electricBlue.500 + orange.500',
+            derivedFrom: `${describe(a)} + ${describe(b)}`,
         });
     }
 

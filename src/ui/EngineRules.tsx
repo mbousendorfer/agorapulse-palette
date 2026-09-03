@@ -30,6 +30,10 @@
  *
  * The derivation stays, because it is the answer to this panel's own heading and it is a
  * read-out rather than an option: six lines showing how five hexes become a ladder.
+ *
+ * "Five" is the shipped count, not a fixed one. Each anchor can be UNHOOKED from this panel or
+ * from its shade's inspector: the numbers it fed the ladder stay in the spec, its shade derives,
+ * and the heading and the derivation lines re-read from the spec — see `engine/anchors.ts`.
  */
 
 import { useMemo, useState } from 'react';
@@ -39,8 +43,11 @@ import { Input } from '@/components/ui/input';
 import { Chip } from './Chip';
 
 import { hexToOklch, normaliseHex } from '../color/oklab';
+import { countAnchors, detachAnchor, detachGreyAnchor } from '../engine/anchors';
 import { evaluateConstraints } from '../engine/constraints';
+import { greyEnd } from '../engine/grey';
 import { anchorReach } from '../engine/reach';
+import { isGreyHex } from '../engine/types';
 import { useResetOn } from './useDerived';
 import { paletteEditCount, useStore } from '../state/store';
 
@@ -58,6 +65,13 @@ export function EngineRules() {
        not on a pointer move.
     */
     const reach = useMemo(() => anchorReach(spec), [spec]);
+    const anchorCount = countAnchors(spec);
+    const say = useStore((s) => s.say);
+    // One toast for every row: what was unhooked, and that it is derived from here on.
+    const unhookGrey = (rung: 100 | 1000) => {
+        updateSpec((draft) => detachGreyAnchor(draft, rung));
+        say(`grey ${rung} unhooked — derived now`);
+    };
 
     // Memoised: ~30 contrastHex calls, and the panel re-renders on every palette edit.
     const constraints = useMemo(() => evaluateConstraints(spec, solution), [spec, solution]);
@@ -95,13 +109,30 @@ export function EngineRules() {
             <div className="fold-body">
                 <div className="flex flex-col gap-8">
                     <div className="flex flex-col gap-3">
-                        <h3 className="text-foreground text-xs font-semibold">The five anchors</h3>
+                        {/* Counted, like every figure on this page: "five" would be wrong the
+                            moment one is unhooked. */}
+                        <h3 className="text-foreground text-xs font-semibold">
+                            {anchorCount === 0
+                                ? 'No anchors'
+                                : `The ${anchorCount === 1 ? 'one' : anchorCount} anchor${anchorCount === 1 ? '' : 's'}`}
+                        </h3>
                         <p className="text-muted-foreground max-w-prose text-xs">
-                            Every other shade is derived from these. The figure on each row is
-                            measured, not remembered: it is how many of the {solution.rungs.size}{' '}
-                            shades change hex when that anchor's lightness moves by 0.01 — so it
-                            answers what you will see move, rather than what structurally depends on
-                            it.
+                            {anchorCount === 0 ? (
+                                <>
+                                    Every anchor has been unhooked. The ladder is seated on the
+                                    lightnesses they left behind, and all {solution.rungs.size}{' '}
+                                    shades are derived.
+                                </>
+                            ) : (
+                                <>
+                                    Every other shade is derived from these. The figure on each row
+                                    is measured, not remembered: it is how many of the{' '}
+                                    {solution.rungs.size} shades change hex when that anchor's
+                                    lightness moves by 0.01 — so it answers what you will see move,
+                                    rather than what structurally depends on it. Unhooking one keeps
+                                    the numbers it fed the ladder and lets its shade derive.
+                                </>
+                            )}
                         </p>
                         {spec.chromatic.families
                             .filter((f) => Object.keys(f.anchors).length > 0)
@@ -120,21 +151,43 @@ export function EngineRules() {
                                                 if (f) f.anchors[Number(rung)] = next;
                                             })
                                         }
+                                        onUnhook={() => {
+                                            updateSpec((draft) =>
+                                                detachAnchor(draft, family.id, Number(rung)),
+                                            );
+                                            say(
+                                                `${family.label} ${rung} unhooked — derived now; the ladder kept its lightness`,
+                                            );
+                                        }}
                                     />
                                 )),
                             )}
-                        <AnchorField
-                            label="Grey 100"
-                            hex={spec.grey.anchor100}
-                            moves={reach.get('grey.100')}
-                            onChange={(next) => updateSpec((x) => void (x.grey.anchor100 = next))}
-                        />
-                        <AnchorField
-                            label="Grey 1000"
-                            hex={spec.grey.anchor1000}
-                            moves={reach.get('grey.1000')}
-                            onChange={(next) => updateSpec((x) => void (x.grey.anchor1000 = next))}
-                        />
+                        {isGreyHex(spec.grey.anchor100) ? (
+                            <AnchorField
+                                label="Grey 100"
+                                hex={spec.grey.anchor100}
+                                moves={reach.get('grey.100')}
+                                onChange={(next) =>
+                                    updateSpec((x) => void (x.grey.anchor100 = next))
+                                }
+                                onUnhook={() => unhookGrey(100)}
+                            />
+                        ) : (
+                            <UnhookedEnd label="Grey 100" end={greyEnd(spec.grey.anchor100)} />
+                        )}
+                        {isGreyHex(spec.grey.anchor1000) ? (
+                            <AnchorField
+                                label="Grey 1000"
+                                hex={spec.grey.anchor1000}
+                                moves={reach.get('grey.1000')}
+                                onChange={(next) =>
+                                    updateSpec((x) => void (x.grey.anchor1000 = next))
+                                }
+                                onUnhook={() => unhookGrey(1000)}
+                            />
+                        ) : (
+                            <UnhookedEnd label="Grey 1000" end={greyEnd(spec.grey.anchor1000)} />
+                        )}
                     </div>
 
                     <div className="flex flex-col gap-4">
@@ -146,12 +199,18 @@ export function EngineRules() {
                                 palette is built". The divisors named here are still in the
                                 spec — they are just edited there rather than on a slider. */}
                         <ol className="chain [&_li]:border-b [&_li]:text-xs [&_li]:text-muted-foreground [&_li>span_em]:not-italic">
+                            {/* From `derived.ladderSources`, so an unhooked anchor reads
+                                "chosen L 0.5197" here the same instant it does everywhere. */}
                             <li>
-                                <span>rung 700 &larr; the purple anchor&rsquo;s lightness</span>
+                                <span>rung 700 &larr; {sourceSentence(d.ladderSources.L700)}</span>
                                 <b>{d.L700.toFixed(4)}</b>
                             </li>
                             <li>
-                                <span>rung 500 &larr; mean of the two brand anchors</span>
+                                <span>
+                                    rung 500 &larr; mean of{' '}
+                                    {sourceSentence(d.ladderSources.L500[0])} and{' '}
+                                    {sourceSentence(d.ladderSources.L500[1])}
+                                </span>
                                 <b>{d.L500.toFixed(4)}</b>
                             </li>
                             <li>
@@ -290,8 +349,38 @@ function ResetEverything() {
 }
 
 /**
- * One anchor: a swatch you can open, the hex you can type, what it reads in OKLCH, and how much
- * of the palette a nudge to it moves.
+ * `purple.700` → "the purple.700 anchor's lightness"; `chosen L 0.5197` → "a chosen lightness
+ * (its anchor was unhooked)". The engine names the source; this only phrases it.
+ */
+function sourceSentence(source: string): string {
+    return source.startsWith('chosen L ')
+        ? 'a chosen lightness (its anchor was unhooked)'
+        : `the ${source} anchor’s lightness`;
+}
+
+/**
+ * A grey end after unhooking: the two numbers the ramps still read, with nothing to edit.
+ *
+ * Read-only on purpose. There is no re-hook, so there is no control to offer — and an input
+ * here would be exactly the "disabled control invites you to try it" the inspector's own header
+ * comment warns about.
+ */
+function UnhookedEnd({ label, end }: { label: string; end: { L: number; C: number } }) {
+    return (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="border-input size-7 shrink-0 rounded-md border border-dashed" />
+            <span className="w-32 shrink-0 text-xs">{label}</span>
+            <span className="text-muted-foreground shrink-0 text-xs">unhooked</span>
+            <span className="text-muted-foreground shrink-0 font-mono text-xs tabular-nums">
+                L {end.L.toFixed(4)} · C {end.C.toFixed(3)}
+            </span>
+        </div>
+    );
+}
+
+/**
+ * One anchor: a swatch you can open, the hex you can type, what it reads in OKLCH, how much
+ * of the palette a nudge to it moves, and the way to let it go.
  *
  * ## What was wrong with the row before
  *
@@ -313,6 +402,7 @@ function AnchorField({
     hex,
     moves,
     onChange,
+    onUnhook,
 }: {
     label: string;
     hex: string;
@@ -323,6 +413,8 @@ function AnchorField({
      */
     moves?: number | null;
     onChange: (hex: string) => void;
+    /** Let the anchor go — see `anchors.ts`. The row's primary path, editing, is untouched. */
+    onUnhook?: () => void;
 }) {
     /*
        `dragging` now has exactly one writer, and it is the colour picker below.
@@ -432,6 +524,19 @@ function AnchorField({
                 </span>
             )}
             {error && <Chip tone="bad">{error}</Chip>}
+            {/* Last in the row, after the cost of moving it: the cost of removing it is stated
+                on the shade's own inspector, where there is room for the sentence. */}
+            {onUnhook && (
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground hover:text-foreground h-7 px-2 text-xs"
+                    onClick={onUnhook}
+                    title={`Unhook ${label}: its shade derives from the ladder, and what it fed the ladder is kept as a number`}
+                >
+                    Unhook
+                </Button>
+            )}
         </div>
     );
 }

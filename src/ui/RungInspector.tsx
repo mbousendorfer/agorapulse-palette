@@ -28,10 +28,11 @@ import { Chip } from './Chip';
 import { ChannelEditor } from './ChannelEditor';
 
 import { contrastHex, hexToOklch, normaliseHex } from '../color/oklab';
+import { detachAny, detachPreview } from '../engine/anchors';
 import { deriveChromaFactor } from '../engine/chroma';
 import { solvePalette } from '../engine/solve';
 import { wcagLevel } from '../engine/constraints';
-import { rungRef } from '../engine/types';
+import { isGreyHex, rungRef } from '../engine/types';
 import { useStore } from '../state/store';
 
 export function RungInspector({ family, rung }: { family: string; rung: number }) {
@@ -46,12 +47,17 @@ export function RungInspector({ family, rung }: { family: string; rung: number }
     const isGrey = family === 'grey';
     const familySpec = spec.chromatic.families.find((f) => f.id === family);
 
+    /*
+       A grey end counts as an anchor only while it is still a hex. Once unhooked it is an
+       `{ L, C }` and this rung is derived like any other — treating it as an anchor here would
+       let a hex edit quietly hook it back, which is not an edit this panel offers.
+    */
+    const greyEnd =
+        rung === 100 ? spec.grey.anchor100 : rung === 1000 ? spec.grey.anchor1000 : null;
     const anchorHex = isGrey
-        ? rung === 100
-            ? spec.grey.anchor100
-            : rung === 1000
-              ? spec.grey.anchor1000
-              : undefined
+        ? greyEnd !== null && isGreyHex(greyEnd)
+            ? greyEnd
+            : undefined
         : familySpec?.anchors[rung];
 
     const override = spec.overrides.find((o) => o.rung === rungRef(family, rung));
@@ -136,6 +142,16 @@ export function RungInspector({ family, rung }: { family: string; rung: number }
         }
     }, [scope, isGrey, draft, spec, family, rung]);
 
+    /*
+       What unhooking this anchor would do, found by doing it on a copy and solving — the same
+       reasoning as `rampLanding`: a second implementation of "where does it land" would drift
+       from the commit. Above the guard, because it is a hook.
+    */
+    const unhook = useMemo(
+        () => (isAnchor ? detachPreview(spec, solution, family, rung) : null),
+        [isAnchor, spec, solution, family, rung],
+    );
+
     if (!solved) return null;
 
     const ladderIndex = isGrey ? rung / 100 - 1 : solution.chromaticRungs.indexOf(rung);
@@ -213,6 +229,40 @@ export function RungInspector({ family, rung }: { family: string; rung: number }
         updateSpec((d) => {
             d.overrides = d.overrides.filter((o) => o.rung !== rungRef(family, rung));
         });
+
+    /*
+       Unhook: the anchor goes, what it fed the derivation stays as numbers — see `anchors.ts`.
+       One `updateSpec`, so it is one undo step, and the toast says what changed hands rather
+       than only that something did.
+    */
+    const unhookNow = () => {
+        updateSpec((d) => detachAny(d, family, rung));
+        say(
+            unhook?.feedsLadder
+                ? `${family} ${rung} unhooked — derived now; the ladder kept its lightness`
+                : `${family} ${rung} unhooked — derived now`,
+        );
+    };
+
+    /*
+       The consequence of unhooking, as one sentence, before the button that does it. Four
+       shapes, from the trial solve: lands on the same hex; lands elsewhere and nothing else
+       moves; other shades move too; or the trial did not solve.
+    */
+    const unhookNote = (() => {
+        if (!isAnchor) return null;
+        if (!unhook) return 'Unhooking it does not solve from here.';
+        const same = unhook.landsAt.toLowerCase() === solved?.hex.toLowerCase();
+        const others = unhook.changedHexes - (same ? 0 : 1);
+        const tail =
+            others === 0
+                ? 'nothing else moves'
+                : `${others} other shade${others === 1 ? '' : 's'} move${others === 1 ? 's' : ''}`;
+        const ladder = unhook.feedsLadder ? ' The ladder keeps the lightness it set.' : '';
+        return same
+            ? `Unhook it and this shade stays at ${unhook.landsAt} — the same hex, now derived — and ${tail}.${ladder}`
+            : `Unhook it and this shade falls back onto the ladder at ${unhook.landsAt}, and ${tail}.${ladder}`;
+    })();
 
     const draftOklch = (() => {
         try {
@@ -315,6 +365,22 @@ export function RungInspector({ family, rung }: { family: string; rung: number }
                         <AlertDescription>
                             All {blastRadius} shades re-derive from it, across every family.
                         </AlertDescription>
+                        {/* The other edit an anchor has: letting it go. Stated in the same
+                            place that says what it is, with its consequence measured, and
+                            the same button recipe as "Reset to the ladder" below. */}
+                        <AlertDescription className="mt-2">{unhookNote}</AlertDescription>
+                        <div className="mt-3">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 px-2 text-xs"
+                                disabled={!unhook}
+                                onClick={unhookNow}
+                                title="This shade stops being an input; what it fed the ladder is kept as a number"
+                            >
+                                Unhook this anchor
+                            </Button>
+                        </div>
                     </Alert>
                 ) : (
                     <div className="insp-scope rounded-md bg-muted border-l">

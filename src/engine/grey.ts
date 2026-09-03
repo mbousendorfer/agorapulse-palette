@@ -8,7 +8,7 @@
  * the constraint.
  *
  * Derivation:
- *   1. L100, L1000 <- the two anchors.
+ *   1. L100, L1000 <- the two anchors, or the L and C an unhooked one left behind.
  *   2. L200 <- L100 - step100 (free parameter).
  *   3. L800 <- SOLVED from contrast(800, 200) >= target. Binding at 4.501.
  *   4. The five rungs between 200 and 800 are distributed to equalise the two
@@ -32,7 +32,22 @@
 
 import { contrastHex, hexToOklch, oklchToHex } from '../color/oklab';
 import { bisect } from './bisect';
-import type { GreySpec } from './types';
+import { isGreyHex, type GreyEnd, type GreySpec } from './types';
+
+/**
+ * Read one end of the grey scale, whichever form it is in.
+ *
+ * `hex` is present only while the end is still pinned — it is what the solver writes into the
+ * rung verbatim. Once unhooked the end is the pair of numbers the ramps need and nothing else,
+ * and the rung at that end re-derives like the eight between them.
+ */
+export function greyEnd(end: GreyEnd): { hex?: string; L: number; C: number } {
+    if (isGreyHex(end)) {
+        const { L, C } = hexToOklch(end);
+        return { hex: end, L, C };
+    }
+    return { L: end.L, C: end.C };
+}
 
 export interface GreyResult {
     /** Rungs 100..1000, 10 values. */
@@ -80,8 +95,8 @@ export function greyHexAt(L: number, anchors: GreyResultAnchors, spec: GreySpec)
 }
 
 export function solveGrey(spec: GreySpec): GreyResult {
-    const a100 = hexToOklch(spec.anchor100);
-    const a1000 = hexToOklch(spec.anchor1000);
+    const a100 = greyEnd(spec.anchor100);
+    const a1000 = greyEnd(spec.anchor1000);
 
     const L100 = a100.L;
     const L1000 = a1000.L;
