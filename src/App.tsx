@@ -29,7 +29,6 @@ import { cn } from '@/lib/utils';
 
 import { evaluateConstraints } from './engine/constraints';
 import { decodeSpecFromHash } from './export';
-import { FigmaPalettes } from './ui/FigmaPalettes';
 import { PaletteWall } from './ui/PaletteWall';
 import { Segmented, SegmentedItem } from './ui/Segmented';
 import { graph, paletteEditCount, useStore } from './state/store';
@@ -152,11 +151,10 @@ export function App() {
             <Masthead />
             <main className="workspace">
                 <RestoreNotice />
+                {/* What design says is no longer a second wall underneath this one: the wall
+                    itself switches to the Figma export, cell for cell, so the two are compared
+                    in place rather than a screen apart. */}
                 <PaletteWall />
-                {/* What design says, under what the engine says. A sibling of the wall rather
-                    than something inside it: it is not part of solving the palette, it is the
-                    reference you check the solution against. */}
-                <FigmaPalettes />
             </main>
             <StatusBar />
             <Toast />

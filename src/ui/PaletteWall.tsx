@@ -18,11 +18,13 @@ import { ColourTile, SWATCH_FACE, SWATCH_HEAD, SWATCH_HEX } from './ColourTile';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-import { contrastHex, prefersDarkInk } from '../color/oklab';
+import { contrastHex, hexToOklch, prefersDarkInk } from '../color/oklab';
 import { countAnchors } from '../engine/anchors';
 import { normaliseScopes, scopeSentence, setFamilyScopes } from '../engine/scope';
 import { GREY_RUNGS, rungRef } from '../engine/types';
+import { FIGMA_MODE, figmaHexOf } from '../figma/reference';
 import { ScopeControl } from './ScopeControl';
+import { Segmented, SegmentedItem } from './Segmented';
 import { cssVarFromPath } from '../model/cssName';
 // `graph` is used only by GivenColours, which lists vendored literals. The wall
 // itself deliberately does NOT consult it — see rungCssVar below.
@@ -378,6 +380,22 @@ function PaletteActions() {
     const edits = useStore(paletteEditCount);
     const dirty = edits > 0;
 
+    const view = useStore((s) => s.wallView);
+    const setWallView = useStore((s) => s.setWallView);
+    /*
+       How many cells disagree with Figma, counted from the solve rather than remembered — the
+       number that says whether the switch is worth flipping. Memoised on the solution; ~66
+       map lookups, and it only prints while the Figma view is on.
+    */
+    const figmaDiffers = useMemo(() => {
+        let n = 0;
+        for (const r of solution.rungs.values()) {
+            const f = figmaHexOf(r.family, r.rung);
+            if (f === undefined || f !== r.hex) n++;
+        }
+        return n;
+    }, [solution]);
+
     const downloadFigma = () => {
         /*
            An empty alias map, and that is a statement rather than a placeholder.
@@ -446,6 +464,38 @@ function PaletteActions() {
         <div className="pal-actions">
             <div className="pal-actions-left">
                 <AddFamilyInline />
+                {/* What the wall shows. Beside the control that adds to the palette, because
+                    both are about the wall itself rather than about leaving the app. The Figma
+                    view is read-only and says so with its count: cells that differ from what
+                    you have, so the switch reports before you flip it whether there is
+                    anything to see. */}
+                <Segmented
+                    type="single"
+                    size="sm"
+                    value={view}
+                    onValueChange={(v) => v && setWallView(v as typeof view)}
+                    aria-label="What the wall shows"
+                >
+                    <SegmentedItem
+                        value="edit"
+                        className="px-2 text-xs"
+                        title="The palette you are editing, solved from the spec"
+                    >
+                        Editing
+                    </SegmentedItem>
+                    <SegmentedItem
+                        value="figma"
+                        className="px-2 text-xs"
+                        title={`What Figma exports for the same cells, mode ${FIGMA_MODE}. Read-only — ${figmaDiffers} of ${solution.rungs.size} differ from your edit.`}
+                    >
+                        Figma reference
+                    </SegmentedItem>
+                </Segmented>
+                {view === 'figma' && (
+                    <span className="text-muted-foreground text-xs">
+                        read-only · {figmaDiffers} of {solution.rungs.size} differ from your edit
+                    </span>
+                )}
             </div>
             <div className="pal-actions-right text-muted-foreground">
                 <HistoryControls />
@@ -628,6 +678,10 @@ function FamilyRow({
     const updateSpec = useStore((s) => s.updateSpec);
     const selectToken = useStore((s) => s.selectToken);
     const say = useStore((s) => s.say);
+    /* In the Figma view the row is a label and its cells: nothing here can be edited, so the
+       remove button, the scope pills and the rung stepper all step aside rather than offer
+       edits to a palette that is not the one on screen. */
+    const editing = useStore((s) => s.wallView) === 'edit';
     /*
        The family's declared scope, selected by REFERENCE — the array on the spec, not a copy —
        so this row does not re-render on every unrelated store update. Normalised at render.
@@ -667,7 +721,7 @@ function FamilyRow({
                     title={`${label} — ${family === 'grey' ? 'its own ten-rung scale' : 'on the shared lightness ladder'}${scopeCaption ? ` · ${scopeCaption}` : ''}`}
                 >
                     {label}
-                    {removable && (
+                    {removable && editing && (
                         <button
                             className="wall-family-remove text-xs text-muted-foreground hover:text-destructive leading-none"
                             onClick={remove}
@@ -682,15 +736,18 @@ function FamilyRow({
                     state like the hue, so it goes through `updateSpec` and is one undo step.
                     Stacked: two pills side by side measure ~108px and the label column is
                     104 — a number six comments in `app.css` depend on. */}
-                <ScopeControl
-                    value={scopes}
-                    subject={label}
-                    // Abreast again on a phone, where the header is a row with room beside the
-                    // name. A utility, not an `app.css` rule: that file is `layer(components)`
-                    // and `flex-col` here would beat it. 810px is the wall's own breakpoint.
-                    className="wall-family-scope flex-col items-stretch max-[810px]:flex-row max-[810px]:items-center"
-                    onChange={(next) => updateSpec((d) => setFamilyScopes(d, family, next))}
-                />
+                {editing && (
+                    <ScopeControl
+                        value={scopes}
+                        subject={label}
+                        // Abreast again on a phone, where the header is a row with room beside
+                        // the name. A utility, not an `app.css` rule: that file is
+                        // `layer(components)` and `flex-col` here would beat it. 810px is the
+                        // wall's own breakpoint.
+                        className="wall-family-scope flex-col items-stretch max-[810px]:flex-row max-[810px]:items-center"
+                        onChange={(next) => updateSpec((d) => setFamilyScopes(d, family, next))}
+                    />
+                )}
             </div>
             {cells.map((rung, i) => (
                 <Swatch
@@ -712,14 +769,17 @@ function FamilyRow({
                 cell after its last shade. A global stepper implied the ladder's
                 DEPTH was shared; it is not — only its lightness values are, and
                 grey has always had ten rungs to the chromatic eight. */}
-            {pad > 0 && family !== 'grey' && (
+            {pad > 0 && family !== 'grey' && editing && (
                 <div className="swatch empty rung-add bg-transparent">
                     <RungControl family={family} rungs={rungs} />
                 </div>
             )}
-            {Array.from({ length: Math.max(0, pad - (family === 'grey' ? 0 : 1)) }, (_, i) => (
-                <div className="swatch empty bg-transparent" key={`pad-${i}`} />
-            ))}
+            {Array.from(
+                { length: Math.max(0, pad - (family === 'grey' || !editing ? 0 : 1)) },
+                (_, i) => (
+                    <div className="swatch empty bg-transparent" key={`pad-${i}`} />
+                ),
+            )}
         </>
     );
 }
@@ -808,7 +868,17 @@ function Swatch({
     const ref = rungRef(family, rung);
     const nodeId = `ref.palette.${ref}`;
     const solved = useStore((s) => s.solution.rungs.get(ref));
+    const view = useStore((s) => s.wallView);
     const cssVar = rungCssVar(family, rung);
+    /*
+       The Figma view: the same cell, painted with what Figma exports for it.
+
+       Read-only by construction — there is no spec behind a Figma value to edit — so the button
+       stays (it is a cell in the keyboard grid) but stops opening anything. `null` is a rung
+       Figma does not have: an added family, or a rung added at the dark end.
+    */
+    const figma = view === 'figma' ? (figmaHexOf(family, rung) ?? null) : undefined;
+    const shownHex = figma ?? solved?.hex;
 
     /*
        Bring the panel into the viewport when it opens.
@@ -849,10 +919,66 @@ function Swatch({
         popRef.current?.scrollIntoView({ block: 'nearest', behavior: 'auto' });
     }, [isOpenNow]);
 
-    // Ink chosen by measurement, not by a lightness guess — see `prefersDarkInk`.
-    const meta = useMemo(() => (solved ? { light: prefersDarkInk(solved.hex) } : null), [solved]);
+    // Ink chosen by measurement, not by a lightness guess — see `prefersDarkInk`. Measured on
+    // the hex actually painted, which in the Figma view is Figma's.
+    const meta = useMemo(() => (shownHex ? { light: prefersDarkInk(shownHex) } : null), [shownHex]);
 
     if (!solved || !meta) return <div className="swatch empty bg-transparent" />;
+
+    if (figma === null) {
+        // Figma has no such colour. Said in the cell rather than left blank, because a blank
+        // cell in a grid of colours reads as "loading", not as "absent".
+        return (
+            <div
+                className="swatch empty swatch-absent text-muted-foreground bg-transparent text-xs"
+                title={`${label} ${rung} is not in the Figma export`}
+                aria-label={`${label} ${rung}, not in the Figma export`}
+                role="img"
+            />
+        );
+    }
+
+    if (figma !== undefined) {
+        /*
+           Two hexes, and whether they agree. The dot is the wall's own "this differs" mark,
+           pointed the other way: in the edit view it says "not what ships", here it says "not
+           what you have". Same corner, same shape, same question — what is different here.
+        */
+        const differs = figma !== solved.hex;
+        const f = hexToOklch(figma);
+        const figmaTitle = [
+            `${family}-${rung}  ${figma}`,
+            `In Figma, mode ${FIGMA_MODE}`,
+            `L ${f.L.toFixed(4)}  C ${f.C.toFixed(4)}  h ${f.H.toFixed(1)}`,
+            `on white ${contrastHex(figma, '#FFFFFF').toFixed(2)}`,
+            differs ? `Your edit has ${solved.hex}.` : 'Same as your edit.',
+        ].join('\n');
+        return (
+            <div className="swatch-cell">
+                <button
+                    className={cn(SWATCH_FACE, 'readonly', meta.light ? 'light' : 'dark')}
+                    style={{
+                        ['--swatch' as string]: figma,
+                        ['--stagger' as string]: `${Math.abs(rung - 500) / 100}`,
+                    }}
+                    aria-label={`${label} ${rung}, ${figma}, Figma reference${differs ? `, your edit is ${solved.hex}` : ''}`}
+                    data-cell={`${family}.${rung}`}
+                    tabIndex={isStop ? 0 : -1}
+                    onFocus={() => onStop(`${family}.${rung}`)}
+                    title={figmaTitle}
+                >
+                    <span className={SWATCH_HEAD} aria-hidden>
+                        {rung}
+                    </span>
+                    {differs && <span className="swatch-edited" aria-hidden />}
+                    <span className="swatch-foot" aria-hidden>
+                        <span className={SWATCH_HEX}>{figma.replace('#', '')}</span>
+                    </span>
+                </button>
+            </div>
+        );
+    }
+
     const isOpen = selected === nodeId;
 
     const p = solved.provenance;

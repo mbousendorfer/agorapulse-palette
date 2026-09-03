@@ -812,6 +812,18 @@ input[type='range'] {
     box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.62);
 }
 
+/* The Figma view's cells: the wall's face without its behaviour. A pointer would promise an
+   editor that this view, by construction, has not got. */
+.wall .swatch.readonly {
+    cursor: default;
+}
+
+/* A cell Figma has no colour for — an added family, a rung added at the dark end. Outlined so
+   it reads as absent, where a bare gap in a grid of colours reads as not yet painted. */
+.swatch-absent {
+    box-shadow: inset 0 0 0 1px var(--border);
+}
+
 /* The one label deliberately held below the 11px floor.
    It sits INSIDE a colour sample, so it is not part of the problem the floor
    exists to fix: its ink is chosen per shade by measured contrast, never from
@@ -1898,32 +1910,15 @@ button.status-group {
    group tree leaves short leaf names on the tiles — `default`, `hovered`, `clicked` — so the
    132px the flat version needed is no longer bought by anything, and a wide rectangle read as
    a different component from the palette above it. */
-/* A ladder row's columns come from `--figma-cols`, written by `FigmaPalettes` — see the note
-   at that call site for why the count rather than the template. */
 /*
-   A LADDER is a plate; a SET is a set.
+   A SET, not a ladder.
 
-   The reference rows whose names end in a rung line up in columns, exactly like the wall above,
-   and they get the wall's treatment: 1px gutters over `--border`, so the samples abut and can be
-   compared with nothing between them. The rows that have no rungs — the social brands, the
-   one-off chart hues — are a collection rather than a scale, and they keep their gutters and
-   their own inset edge, because tiles that wrap have no grid to bound them and lining them up
-   would claim an order they do not have.
-
-   That distinction is the card's whole subject: `rowsOf` already decides which rows are ladders,
-   and this is that decision made visible.
+   The tiles here — the social brands, the one-off chart hues — are a collection rather than a
+   scale, so they keep their gutters and their own inset edge: tiles that wrap have no grid to
+   bound them, and lining them up would claim an order they do not have. The ladder rows that
+   used to sit beside them (the Figma reference collection) are gone from this card; the wall
+   itself now switches to the Figma values, cell for cell, where alignment is the grid's own.
 */
-.figma-wall-ladder {
-    grid-template-columns: repeat(var(--figma-cols, 8), minmax(46px, 1fr));
-    gap: 1px;
-}
-
-/* The plate's rule in place of the free tile's inset one: an outset 1px ring that meets its
-   neighbours' in the gutter and closes the row's outer edge. Same mechanism as the wall. */
-.figma-wall-ladder .figma-tile {
-    box-shadow: 0 0 0 1px var(--border);
-}
-
 .figma-wall-free .figma-wall-tiles {
     grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
 }
@@ -2193,37 +2188,6 @@ button.status-group {
         align-items: baseline;
         gap: var(--s2);
         padding-top: 0;
-    }
-
-    /*
-       A ladder here still scrolls, and that is deliberate rather than unfinished.
-
-       `--figma-cols` reaches 10 for grey, which at 46px minimum wants 496px against ~343.
-       The wall above solves that by dropping its hex labels, because the wall is the
-       instrument and has to fit. This card is the reference you check the wall AGAINST — its
-       job is that the Figma names line up under the same rungs, so shrinking the tiles until
-       they stop lining up would cost the only thing it is for. It scrolls instead, with the
-       scrollbar VISIBLE: the status bar's hidden-scrollbar trick is what made its own
-       overflow undiscoverable, and that mistake is not worth repeating here.
-    */
-    .figma-wall-ladder {
-        overflow-x: auto;
-        scrollbar-width: thin;
-        /*
-           `min-width: 0` is what makes the `overflow-x` above do anything at all.
-
-           The rule claimed to scroll and did not. `.figma-wall` is a column flex container in
-           this tier, so this row sized itself to its CONTENT — ten columns at their minimum —
-           and simply grew past the card. Measured at 375px: it stuck out 162px, and it was the
-           single widest thing on the page, so what actually scrolled was `.workspace`, dragging
-           the whole layout sideways rather than one row of tiles.
-
-           `overflow` only ever scrolls a box that has been told it may be narrower than its
-           content, and a flex item's `min-width` defaults to `auto`, which refuses exactly
-           that. So this pair is the rule; the `overflow-x` on its own was a comment.
-        */
-        min-width: 0;
-        max-width: 100%;
     }
 
     .figma-wall-free .figma-wall-tiles {

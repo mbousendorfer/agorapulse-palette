@@ -53,6 +53,7 @@ export const BASELINE_RESOLVED = resolveGraph(graphWithAdditions(graph, BASELINE
 const BASELINE_SPEC_JSON = JSON.stringify(BASELINE_SPEC);
 
 export type ThemeMode = 'light' | 'dark' | 'system';
+export type WallView = 'edit' | 'figma';
 
 /** What a rehydrated session brought back. */
 export interface RestoreReport {
@@ -107,6 +108,14 @@ export interface AppState {
     /** `ref.palette.<family>.<rung>` — which swatch has its inspector open. */
     selectedToken: NodeId | null;
     /**
+     * What the wall shows: the palette being edited, or what Figma exports for the same cells.
+     *
+     * A VIEW, not authored state — it changes nothing in the spec and is not persisted. The
+     * Figma view is read-only, and switching to it closes the inspector, because an open
+     * editor over values you cannot edit is a promise the screen cannot keep.
+     */
+    wallView: WallView;
+    /**
      * True while a slider or colour picker is being dragged.
      *
      * Read in two places, both to stop something from fighting the pointer: the wall drops its
@@ -122,6 +131,7 @@ export interface AppState {
     // ----------------------------------------------------------------- actions
     updateSpec: (mutate: (draft: PaletteSpec) => void) => void;
     selectToken: (id: NodeId | null) => void;
+    setWallView: (view: WallView) => void;
     setDragging: (dragging: boolean) => void;
     setTheme: (theme: ThemeMode) => void;
     say: (message: string) => void;
@@ -302,6 +312,7 @@ function initialise(
         revision: 0,
 
         selectedToken: null,
+        wallView: 'edit',
         dragging: false,
         theme: 'dark',
         toast: null,
@@ -366,6 +377,9 @@ function initialise(
         },
 
         selectToken: (selectedToken) => set({ selectedToken }),
+        // The Figma view is read-only, so nothing can stay selected under it.
+        setWallView: (wallView) =>
+            set(wallView === 'figma' ? { wallView, selectedToken: null } : { wallView }),
         setDragging: (dragging) => {
             // Opening a gesture arms the coalescer; releasing it does not need to.
             if (dragging) gestureRecorded = false;
