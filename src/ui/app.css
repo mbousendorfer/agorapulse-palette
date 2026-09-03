@@ -622,12 +622,32 @@ input[type='range'] {
    faded along its length, which the note here called "a second opinion about what a hairline
    looks like". Both are gone: it is a scale now, and the theme still owns the colour.
 */
-.wall-head-rule {
+/*
+   The head's right-hand side: the view switch, then the graduation under it, spanning every
+   rung column. A column so the switch sits ABOVE the ticks rather than on them — the ticks are
+   a background, and a control painted over a background it does not own reads as a mistake.
+*/
+.wall-head-side {
     grid-column: 2 / -1;
-    /* STRETCH, not `end`, so the ticks hang from the plate's edge whatever height the axis
-       label gives this row. `.wall-head` sets `align-self: end` for the label; inherited here it
-       made this a 10px strip floating in a taller cell. */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: var(--s2);
+    /* Stretch, so the ticks reach the plate's edge whatever height the switch gives the row. */
     align-self: stretch;
+}
+
+/* What the wall shows, right-aligned over the last rungs, with its caption to the left. */
+.wall-view {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--s3);
+    flex-wrap: wrap;
+}
+
+.wall-head-rule {
+    /* The ticks hang from the plate's edge: this is the last thing in the head's column. */
     min-height: 10px;
     /*
        TICKS ONLY. No baseline is drawn here, and that is the point rather than an omission: the
@@ -1661,36 +1681,53 @@ button.status-group {
 
 /* ------------------------------------------------------- palette actions ---- */
 
-/* Above the wall, because these act ON it.
-   Three actions of three different kinds sat here at one weight and one width:
-   creating a colour, producing a file, and destroying every edit. Ranked now —
-   the creative one keeps the left edge and full ink, the utilities go right at
-   secondary weight, and a hairline says they are a different KIND of thing
-   rather than three peers. */
+/*
+   THE CONSOLE — above the wall, because these act on it.
+
+   Three bays, each captioned, divided by a hairline that runs the bay's full height so the
+   caption and its controls read as one engraved panel: what you do to the palette, how you take
+   it back, how it leaves the app. This replaces a single line where seven controls of three
+   kinds shared one weight, and where the view switch sat against "Add a colour".
+
+   The caption is the same voice as the bezel's gauges — a value with its unit under it — turned
+   the other way up: the name first, then the controls it names. Sans, small, muted, lowercase,
+   like "lighter → darker" on the plate; a caption is prose about the row, not a value in it.
+*/
 .pal-actions {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--s4);
-    padding-bottom: var(--s3);
+    align-items: flex-end;
+    gap: 0;
+    padding-bottom: var(--s4);
     flex-wrap: wrap;
+    row-gap: var(--s3);
 }
 
-.pal-actions-right {
+.pal-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s1);
+    padding-right: var(--s5);
+}
+
+.pal-group + .pal-group {
+    border-left: 1px solid var(--border);
+    padding-left: var(--s5);
+}
+
+.pal-group-label {
+    font-family: var(--font-sans);
+    font-size: 11px;
+    line-height: 1;
+    padding-left: 2px;
+}
+
+/* One row of controls at one height, so a bay with a 28px button and a bay with two 28px
+   glyphs sit on the same baseline whatever the caption above them did. */
+.pal-group-row {
     display: flex;
     align-items: center;
-    gap: var(--s3);
-    flex: none;
-}
-
-/* A hairline before the utilities, so the eye reads two groups and not five
-   buttons. */
-.pal-actions-right::before {
-    content: '';
-    align-self: stretch;
-    width: 1px;
-    background: var(--border);
-    margin-right: var(--s1);
+    gap: var(--s2);
+    min-height: 28px;
 }
 
 /* Destructive, so it asks — in place, at the height of the button it replaced.
@@ -2122,25 +2159,20 @@ button.status-group {
     /*
        The action group wraps instead of running off the edge.
 
-       `.pal-actions-right` is `flex: none` in the wide layout, which is right there — the five
-       controls fit on one line beside `Add a colour` and should not be squeezed. On a phone the
-       outer row already wraps, so the group lands on its own line at 390px with five controls
-       to fit into it, and `flex: none` then refused to wrap or shrink: `Reset palette` was
-       clipped mid-word by the viewport.
-
-       Measured at 390px, which is where it showed. `Undo`, `Redo` and `Copy link` are what took
-       the group from two controls to five, so this is their bill.
+       The console's bays wrap as units. A bay that lands on a new line has no bay to its left,
+       so its hairline would be a stray rule at the edge of the row: the divider comes off and
+       the bay keeps only its bottom-of-row spacing. Measured at 390px, where "share" is the bay
+       that wraps.
     */
-    .pal-actions-right {
-        flex-wrap: wrap;
-        flex: 1 1 auto;
-        justify-content: flex-start;
+    .pal-group + .pal-group {
+        border-left: 0;
+        padding-left: 0;
     }
 
     /* Both head cells span, for the same reason: there is no column 1 to sit beside now.
-       `.wall-head-rule` is `2 / -1` in the wide layout, which would leave it short here. */
+       `.wall-head-side` is `2 / -1` in the wide layout, which would leave it short here. */
     .wall-head-label,
-    .wall-head-rule {
+    .wall-head-side {
         grid-column: 1 / -1;
     }
 

@@ -320,7 +320,16 @@ export function PaletteWall() {
                 <div className="wall-head wall-head-label text-muted-foreground text-xs">
                     lighter → darker
                 </div>
-                <div className="wall-head wall-head-rule" />
+                {/* The head of the plate carries two things about the grid under it: the axis
+                    (the graduation, ticked per column) and WHAT IS BEING SHOWN (the view
+                    switch). The switch lived in the actions bar, beside "Add a colour" — a
+                    control that changes what you see, sat among controls that change what you
+                    have. It is on the wall now, above the graduation, where the thing it
+                    describes begins. */}
+                <div className="wall-head wall-head-side">
+                    <WallViewSwitch />
+                    <div className="wall-head-rule" />
+                </div>
 
                 {familyRows.map((row) => (
                     <FamilyRow
@@ -379,22 +388,6 @@ function PaletteActions() {
     // "Discard 40 edits?" read as a threat to forty things.
     const edits = useStore(paletteEditCount);
     const dirty = edits > 0;
-
-    const view = useStore((s) => s.wallView);
-    const setWallView = useStore((s) => s.setWallView);
-    /*
-       How many cells disagree with Figma, counted from the solve rather than remembered — the
-       number that says whether the switch is worth flipping. Memoised on the solution; ~66
-       map lookups, and it only prints while the Figma view is on.
-    */
-    const figmaDiffers = useMemo(() => {
-        let n = 0;
-        for (const r of solution.rungs.values()) {
-            const f = figmaHexOf(r.family, r.rung);
-            if (f === undefined || f !== r.hex) n++;
-        }
-        return n;
-    }, [solution]);
 
     const downloadFigma = () => {
         /*
@@ -459,122 +452,172 @@ function PaletteActions() {
     };
 
     return (
-        /* No bottom rule here any more. The plate's own graduation sits 24px below this row
-           and draws the boundary; two hairlines that close together read as a mistake. */
-        <div className="pal-actions">
-            <div className="pal-actions-left">
-                <AddFamilyInline />
-                {/* What the wall shows. Beside the control that adds to the palette, because
-                    both are about the wall itself rather than about leaving the app. The Figma
-                    view is read-only and says so with its count: cells that differ from what
-                    you have, so the switch reports before you flip it whether there is
-                    anything to see. */}
-                <Segmented
-                    type="single"
-                    size="sm"
-                    value={view}
-                    onValueChange={(v) => v && setWallView(v as typeof view)}
-                    aria-label="What the wall shows"
-                >
-                    <SegmentedItem
-                        value="edit"
-                        className="px-2 text-xs"
-                        title="The palette you are editing, solved from the spec"
-                    >
-                        Editing
-                    </SegmentedItem>
-                    <SegmentedItem
-                        value="figma"
-                        className="px-2 text-xs"
-                        title={`What Figma exports for the same cells, mode ${FIGMA_MODE}. Read-only — ${figmaDiffers} of ${solution.rungs.size} differ from your edit.`}
-                    >
-                        Figma reference
-                    </SegmentedItem>
-                </Segmented>
-                {view === 'figma' && (
-                    <span className="text-muted-foreground text-xs">
-                        read-only · {figmaDiffers} of {solution.rungs.size} differ from your edit
-                    </span>
-                )}
-            </div>
-            <div className="pal-actions-right text-muted-foreground">
-                <HistoryControls />
-                {/* Sharing and exporting are the two ways a result LEAVES this app, so they
-                    sit together, and both are outlined rather than filled for the reason the
-                    note below gives. */}
-                <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 px-2 text-xs"
-                    onClick={copyLink}
-                    disabled={!dirty}
-                    title={
-                        dirty
-                            ? 'A link that carries this whole palette — paste it to anybody with the app'
-                            : 'Nothing edited yet — a link would carry the palette the design system already ships'
-                    }
-                >
-                    <Link2 data-icon="inline-start" />
-                    Copy link
-                </Button>
-                {/* Outlined, not filled, and on this screen that is not a taste call. The
-                    theme's primary is a saturated #f54900 and this page exists to judge 66
-                    hues against a neutral ground; a solid orange button was the loudest
-                    thing on it, louder than the palette. Export is a utility here — the
-                    screen's real work is moving anchors. */}
-                <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 px-2 text-xs"
-                    onClick={downloadFigma}
-                    title="The whole palette as a Figma variables payload, ready for the plugin"
-                >
-                    Export for Figma
-                </Button>
-                {confirming ? (
-                    <span className="pal-confirm text-xs text-muted-foreground">
-                        {/* The count, not "every": what you are about to lose is
-                            the thing worth stating before you lose it. */}
-                        <span>
-                            Discard {edits} edit{edits === 1 ? '' : 's'}?
+        /*
+           A console, not a row of buttons.
+
+           Seven controls of three kinds used to share one line at one weight, with the view
+           switch wedged against "Add a colour" — a control that changes what you SEE among
+           controls that change what you HAVE. The kinds are named now, each in its own bay
+           with a caption above it, and a hairline between bays: what you do to the palette,
+           how you take it back, how it leaves the app. The switch is gone from here altogether;
+           it sits on the wall's own head, above the graduation, where the thing it describes
+           begins.
+
+           No bottom rule under the console. The plate's graduation sits just below and draws the
+           boundary; two hairlines that close together read as a mistake.
+        */
+        <div className="pal-actions" role="toolbar" aria-label="Palette actions">
+            <div className="pal-group">
+                <span className="pal-group-label text-muted-foreground">palette</span>
+                <div className="pal-group-row">
+                    <AddFamilyInline />
+                    {confirming ? (
+                        <span className="pal-confirm text-xs text-muted-foreground">
+                            {/* The count, not "every": what you are about to lose is the thing
+                                worth stating before you lose it. */}
+                            <span>
+                                Discard {edits} edit{edits === 1 ? '' : 's'}?
+                            </span>
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                className="h-7 px-2 text-xs"
+                                onClick={() => {
+                                    resetPalette();
+                                    setConfirming(false);
+                                    say('Back to the shipped palette');
+                                }}
+                            >
+                                Reset
+                            </Button>
+                            <Button
+                                size="sm"
+                                className="h-7 px-2 text-xs"
+                                onClick={() => setConfirming(false)}
+                            >
+                                Keep
+                            </Button>
                         </span>
+                    ) : (
                         <Button
-                            variant="destructive"
+                            variant="ghost"
                             size="sm"
                             className="h-7 px-2 text-xs"
-                            onClick={() => {
-                                resetPalette();
-                                setConfirming(false);
-                                say('Back to the shipped palette');
-                            }}
+                            disabled={!dirty}
+                            onClick={() => setConfirming(true)}
+                            title={
+                                dirty
+                                    ? 'Back to the palette the design system ships'
+                                    : 'Nothing edited yet'
+                            }
                         >
-                            Reset
+                            Reset palette
                         </Button>
-                        <Button
-                            size="sm"
-                            className="h-7 px-2 text-xs"
-                            onClick={() => setConfirming(false)}
-                        >
-                            Keep
-                        </Button>
-                    </span>
-                ) : (
+                    )}
+                </div>
+            </div>
+
+            <div className="pal-group">
+                <span className="pal-group-label text-muted-foreground">history</span>
+                <div className="pal-group-row">
+                    <HistoryControls />
+                </div>
+            </div>
+
+            <div className="pal-group">
+                <span className="pal-group-label text-muted-foreground">share</span>
+                <div className="pal-group-row">
+                    {/* Sharing and exporting are the two ways a result LEAVES this app, so they
+                        sit together, and both are outlined rather than filled for the reason
+                        the note below gives. */}
                     <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
                         className="h-7 px-2 text-xs"
+                        onClick={copyLink}
                         disabled={!dirty}
-                        onClick={() => setConfirming(true)}
                         title={
                             dirty
-                                ? 'Back to the palette the design system ships'
-                                : 'Nothing edited yet'
+                                ? 'A link that carries this whole palette — paste it to anybody with the app'
+                                : 'Nothing edited yet — a link would carry the palette the design system already ships'
                         }
                     >
-                        Reset palette
+                        <Link2 data-icon="inline-start" />
+                        Copy link
                     </Button>
-                )}
+                    {/* Outlined, not filled, and on this screen that is not a taste call. The
+                        theme's primary is a saturated #f54900 and this page exists to judge 66
+                        hues against a neutral ground; a solid orange button was the loudest
+                        thing on it, louder than the palette. Export is a utility here — the
+                        screen's real work is moving anchors. */}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={downloadFigma}
+                        title="The whole palette as a Figma variables payload, ready for the plugin"
+                    >
+                        Export for Figma
+                    </Button>
+                </div>
             </div>
+        </div>
+    );
+}
+
+/**
+ * What the wall shows: the palette being edited, or what Figma exports for the same cells.
+ *
+ * On the plate's head rather than in the console, because it is not an action on the palette —
+ * it is a statement about the grid directly beneath it, and it belongs where that grid begins.
+ * The Figma view is read-only and says so beside the switch, with its count: cells that differ
+ * from what you have, counted from the solve so it reports before you flip whether there is
+ * anything to see.
+ */
+function WallViewSwitch() {
+    const solution = useStore((s) => s.solution);
+    const view = useStore((s) => s.wallView);
+    const setWallView = useStore((s) => s.setWallView);
+
+    // Memoised on the solution: ~66 map lookups, re-run only when the palette changes.
+    const figmaDiffers = useMemo(() => {
+        let n = 0;
+        for (const r of solution.rungs.values()) {
+            const f = figmaHexOf(r.family, r.rung);
+            if (f === undefined || f !== r.hex) n++;
+        }
+        return n;
+    }, [solution]);
+
+    return (
+        <div className="wall-view text-xs">
+            <span className="text-muted-foreground">
+                {view === 'figma'
+                    ? `read-only · ${figmaDiffers} of ${solution.rungs.size} differ from your edit`
+                    : 'showing'}
+            </span>
+            <Segmented
+                type="single"
+                size="sm"
+                value={view}
+                onValueChange={(v) => v && setWallView(v as typeof view)}
+                aria-label="What the wall shows"
+            >
+                <SegmentedItem
+                    value="edit"
+                    className="px-2 text-xs"
+                    title="The palette you are editing, solved from the spec"
+                >
+                    Your edit
+                </SegmentedItem>
+                <SegmentedItem
+                    value="figma"
+                    className="px-2 text-xs"
+                    title={`What Figma exports for the same cells, mode ${FIGMA_MODE}. Read-only — ${figmaDiffers} of ${solution.rungs.size} differ from your edit.`}
+                >
+                    Figma
+                </SegmentedItem>
+            </Segmented>
         </div>
     );
 }
@@ -611,10 +654,9 @@ function HistoryControls() {
 
     return (
         /* Utilities, not a new class in `app.css`: the pair only needs to sit tight against
-           each other inside `.pal-actions-right`'s 12px gap, and a rule for that would be a
-           selector with one declaration. `-mr-1` closes the gap on the side facing `Copy
-           link`, so the two glyphs read as one control rather than as two more buttons. */
-        <span className="-mr-1 flex items-center gap-0.5">
+           each other inside its bay, and a rule for that would be a selector with one
+           declaration. `gap-0.5` is what makes two glyphs read as one control. */
+        <span className="flex items-center gap-0.5">
             <Button
                 variant="ghost"
                 size="icon"
