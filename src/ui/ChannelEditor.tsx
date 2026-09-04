@@ -95,10 +95,19 @@ export function ChannelEditor({
      * there reaches the spec until Add is pressed.
      */
     onDragChange,
+    /**
+     * Something to sit on the switch's row, left of it, instead of the hint sentence.
+     *
+     * The inspector puts its colour well and hex field here, so the value and the space it
+     * is read in share one line — the way a picker lays them out — and the card is a row
+     * shorter. The hint is not lost: each option's `title` says what its space is.
+     */
+    leading,
 }: {
     hex: string;
     onChange: (hex: string, meta: { inGamut: boolean }) => void;
     onDragChange?: (dragging: boolean) => void;
+    leading?: React.ReactNode;
 }) {
     /* View state, so it resets with the panel rather than persisting. Someone who thinks in
        HSL will switch once per colour, which is cheaper than a preference nobody remembers
@@ -162,34 +171,49 @@ export function ChannelEditor({
 
     return (
         <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-3">
+            {/*
+               The space switch sits RIGHT, and the sentence about it sits left, in one row of
+               fixed height.
+
+               It used to lead the row, in the same dress as the scope switch two rows above it
+               in the inspector — so "what does this edit change" (a decision with consequences)
+               and "which numbers do you want to see" (a view) read as the same kind of control.
+               Right-aligned and on the sliders' own line, it reads as what it is: a setting of
+               the readings below it. The sentence keeps its job — the HSL half is a warning that
+               a step there is not a perceptual step — and `truncate` keeps the row one line at
+               every width the two callers render at.
+            */}
+            <div className="flex min-h-7 items-center justify-between gap-3">
+                {leading ?? (
+                    <span className="text-muted-foreground min-w-0 truncate text-xs">
+                        {space === 'oklch'
+                            ? 'a step here is a step the engine understands'
+                            : 'sRGB — a step here is not a perceptual step'}
+                    </span>
+                )}
                 <Segmented
                     type="single"
                     size="sm"
                     value={space}
                     onValueChange={(v) => v && setSpace(v as typeof space)}
                     aria-label="Channel space"
+                    className="shrink-0"
                 >
                     <SegmentedItem
                         value="oklch"
-                        className="px-2 font-mono text-xs"
+                        className="h-5 px-2 font-mono text-[11px]"
                         title="Perceptual — the space the ladder is built in"
                     >
                         OKLCH
                     </SegmentedItem>
                     <SegmentedItem
                         value="hsl"
-                        className="px-2 font-mono text-xs"
+                        className="h-5 px-2 font-mono text-[11px]"
                         title="CSS sRGB — what a picker or a stylesheet will hand you"
                     >
                         HSL
                     </SegmentedItem>
                 </Segmented>
-                <span className="text-muted-foreground text-xs">
-                    {space === 'oklch'
-                        ? 'a step here is a step the engine understands'
-                        : 'sRGB — a step here is not a perceptual step'}
-                </span>
             </div>
 
             {space === 'oklch' ? (

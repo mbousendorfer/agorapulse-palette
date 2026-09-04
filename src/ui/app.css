@@ -1245,129 +1245,194 @@ pre.code {
 /* ------------------------------------------------------------- inspector --- */
 /* One shade, one edit. The consequence of that edit is the loudest thing on the
    card, because confusing "rebuilds the scale" with "moves this shade" is the
-   mistake the panel exists to prevent. */
+   mistake the panel exists to prevent.
 
-.inspector {
-    background: var(--card);
-    margin-bottom: 16px;
-    overflow: hidden;
-}
+   Four tiers, top to bottom, and this file owns only their geometry: the plate (the colour,
+   full-bleed), the read-out (label-over-value facts), the edit (two captioned sections), the
+   foot (note and the one undoing action). Paint is at the call site, in `RungInspector`. */
 
-.insp-head {
+/*
+   THE PLATE. The colour is the header: it fills the top of the card edge to edge, and its name
+   is set on it in whichever ink measures better against it. A 56px chip beside a bold word was
+   a form's idea of a colour; a chip card's idea is that the colour IS the header.
+
+   `min-height` rather than `height`, so a long family name can wrap without clipping, and
+   `align-items: flex-end` so the name sits on the plate's lower edge the way a label sits at
+   the foot of a paint chip. The inset hairline is `--foreground` at low alpha — see `.dot` for
+   why a literal white or black here was a bug: a near-white plate on a light card and a
+   near-black one on a dark card both need an edge, and the same literal cannot give both one.
+*/
+.insp-plate {
+    position: relative;
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding: 16px;
+    min-height: 56px;
+    padding: var(--s3) var(--s7) var(--s3) var(--s5);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--foreground) 10%, transparent);
 }
 
-.insp-chip {
-    width: 56px;
-    height: 56px;
-    flex: 0 0 auto;
-    /* `--foreground` at 14%, not white at 14% — see `.dot` for why the literal was a bug. */
-    border: 1px solid color-mix(in srgb, var(--foreground) 14%, transparent);
-}
-
-.insp-id h2 {
+.insp-plate h2 {
     margin: 0;
+    min-width: 0;
 }
 
-.insp-hex {
-    margin: 2px 0 0;
-    color: var(--foreground);
+/* On the plate, right, in the plate's own ink. A 28px target for a 16px glyph; the plate's
+   right padding above reserves its column so the name can never run under it. */
+.insp-close {
+    position: absolute;
+    top: 50%;
+    right: var(--s3);
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    color: inherit;
+    cursor: pointer;
+    transition: background-color var(--fast) var(--ease);
 }
 
-/* Label-value: the label is small and quiet, the value carries the weight. */
+/*
+   THE READ-OUT. Label over value, cells in a row, gapped rather than gridded: the cells have
+   different widths (a hex, a four-decimal lightness, a contrast with a grade chip) and a grid
+   would either waste the difference or squeeze the widest.
+*/
 .insp-facts {
     display: flex;
-    gap: 24px;
-    margin: 0 0 0 auto;
+    flex-wrap: wrap;
+    gap: var(--s2) var(--s5);
+    margin: 0;
+    padding: var(--s2) var(--s5) var(--s3);
+}
+
+/* Four cells on the rule rung, three elsewhere: the gap closes a step so the fourth fits on
+   the line. Measured — with the wider gap, "on white" wrapped under the hex on grey 800. */
+.insp-facts:has(> :nth-child(4)) {
+    gap: var(--s2) var(--s4);
+}
+
+.insp-facts dt {
+    margin-bottom: 2px;
 }
 
 .insp-facts dd {
-    margin: 2px 0 0;
-    color: var(--foreground);
-    display: flex;
-    align-items: baseline;
-    gap: 5px;
-}
-
-.insp-facts dd em {
-    font: var(--text-xs) var(--font-sans);
-}
-
-.insp-facts dd em.warn {
-    color: var(--foreground);
-}
-
-/*
-   The edit fold, and its spacing is grouped rather than uniform.
-
-   Three groups: what this edit changes (`.insp-scope`), the colour itself (`.insp-field` plus
-   the `.insp-delta` sentence that measures it), and why it is leaving the ladder
-   (`.insp-reason`). Between groups is `--s5`; inside the middle group the delta sits `--s2`
-   under its own field, because it describes that value and belongs to it.
-
-   `.insp-scope` had NO bottom margin at all, so the hex input sat flush against the segmented
-   control above it. Worth naming why it went unnoticed: the anchor branch renders an `Alert`
-   with `mb-3` instead, so one of the two paths through this fold was spaced and the other was
-   not. Both are `--s5` now.
-*/
-.insp-edit {
-    padding: var(--s5);
-}
-
-/*
-   The anchor consequence is a shadcn `Alert` now, so it has no rule here at all.
-
-   It was a hand-rolled callout: a flex column with `border-left: 3px solid` taking its
-   colour from `currentColor`, a 13px strong and an 11px muted span. That is `Alert` +
-   `AlertTitle` + `AlertDescription` exactly, and the component states the consequence
-   with a full border rather than a coloured left edge — which is also the house rule.
-*/
-
-.insp-field {
+    margin: 0;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--s2);
+    min-height: 20px;
 }
 
-.insp-field input[type='color'] {
-    width: 38px;
-    height: 32px;
+/* The hex is a button that copies. The icon beside it is the affordance, shown on hover
+   and focus; the gap is reserved even when it is invisible, so the cell never changes width. */
+.insp-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s2);
     padding: 0;
+    color: inherit;
     cursor: pointer;
 }
 
 /*
-   The width lives at the call site as `w-44`, not here, and this rule keeps only what a
-   utility cannot express. shadcn's `Input` sets `w-full`, and a utility outranks this layer —
-   so `width: 130px` here never applied, which was invisible until the Reset button appeared
-   beside the field and shrank it.
+   THE EDIT FOLD: two sections, `--s4` apart. Inside a section the caption sits `--s2` above
+   its first control, and the sentence that measures a control sits `--s2` under it, because
+   it describes that value and belongs to it. Between sections is the only large gap on the
+   card, which is what makes them read as two things.
 */
-.insp-hexinput {
-    font-variant-numeric: tabular-nums;
+.insp-edit {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s4);
+    padding: var(--s3) var(--s5) var(--s4);
+}
+
+.insp-section {
+    min-width: 0;
+}
+
+.insp-caption {
+    margin-bottom: var(--s2);
+}
+
+.insp-field {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+}
+
+/*
+   The native colour picker, as a well.
+
+   Chrome draws `input[type=color]` as a bevelled swatch inside a grey button, and it was the
+   one control on the card that did not look like it belonged to it. `appearance: none` on the
+   input and a radius on the swatch pseudo-elements turn it into a 32px well — the same height
+   as the `Input` beside it — with the same `--foreground`-at-alpha hairline the plate wears.
+   Two vendor pseudo-elements, two rules, for the reason `.has-track` gives: a browser that does
+   not recognise one selector in a list drops the whole rule.
+*/
+.insp-well {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+}
+
+.insp-well::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.insp-well::-webkit-color-swatch {
+    border: 1px solid color-mix(in srgb, var(--foreground) 14%, transparent);
+    border-radius: var(--radius-md);
+}
+
+.insp-well::-moz-color-swatch {
+    border: 1px solid color-mix(in srgb, var(--foreground) 14%, transparent);
+    border-radius: var(--radius-md);
 }
 
 .insp-delta {
-    /* Tight to the field above: it measures that value rather than starting a new thought. */
+    /* Tight to the sliders above: it measures that value rather than starting a new thought. */
     margin: var(--s2) 0 0;
     color: var(--foreground);
 }
 
+/*
+   THE FOOT. One row, the note on the left and the undoing action on the right, under a
+   hairline. `min-height` is the height of the row with a small button in it, so a link-only
+   row and a button row are the same height; revealing the note field grows it, once, on a
+   click rather than during a drag.
+*/
+.insp-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s3);
+    min-height: 44px;
+    padding: var(--s1) var(--s5);
+}
+
 .insp-reason {
     display: block;
-    margin-top: var(--s5);
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 .insp-reason span {
     display: block;
-    margin-bottom: var(--s2);
+    margin-bottom: var(--s1);
 }
 
 .insp-reason input {
     width: 100%;
-    max-width: 560px;
     font-family: var(--font-sans) !important;
 }
 
@@ -1669,18 +1734,6 @@ p.lede {
     pointer-events: none;
 }
 
-/* The hex is what you came for, so it is a button — click to copy. */
-.insp-hex {
-    padding: 0;
-    cursor: pointer;
-    text-align: left;
-    transition: border-color var(--fast) var(--ease);
-}
-
-.insp-hex:hover {
-    border-bottom-color: var(--muted-foreground);
-}
-
 kbd {
     display: inline-block;
     padding: 0 4px;
@@ -1844,17 +1897,6 @@ button.status-group {
     }
 }
 
-/* --------------------------------------------------- edit scope (inspector) --- */
-
-/* The scope switch and its consequence, stacked: the control, then a sentence
-   naming exactly what will move. An edit that silently changed eight shades
-   instead of one would be the worst bug this panel could have. */
-/* The scope switch, unboxed — a control, not a callout. Just the gap to the colour field
-   below it; see `.insp-edit`. */
-.insp-scope {
-    margin-bottom: var(--s5);
-}
-
 /* ------------------------------------------------------- palette actions ---- */
 
 /*
@@ -1977,12 +2019,6 @@ button.status-group {
 .swatch-pop[data-flip] {
     top: auto;
     bottom: calc(100% + var(--s2));
-}
-
-/* It is a panel in its own right now, so it drops the card chrome it wore when
-   it was a block in the page. */
-.swatch-pop > .inspector {
-    margin: 0;
 }
 
 @keyframes pop-in {

@@ -104,7 +104,7 @@ export function ChannelField({
     const clamp = (n: number) => Math.min(max, Math.max(min, n));
 
     return (
-        <div className={cn('flex h-9 items-center gap-3', className)}>
+        <div className={cn('flex h-8 items-center gap-3', className)}>
             <span className="text-muted-foreground w-16 shrink-0 text-xs">{label}</span>
             <input
                 type="range"

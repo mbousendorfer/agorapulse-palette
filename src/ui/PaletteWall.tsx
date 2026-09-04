@@ -1149,7 +1149,7 @@ function Swatch({
             {isOpen && (
                 <div
                     ref={popRef}
-                    className="swatch-pop rounded-lg border border-input shadow-xl [&>.inspector]:border-0 [&>.inspector]:bg-transparent [&>.inspector]:shadow-none"
+                    className="swatch-pop rounded-lg border border-input shadow-xl"
                     data-flip={flip ? '' : undefined}
                     data-end={alignEnd ? '' : undefined}
                     onClick={(e) => e.stopPropagation()}
